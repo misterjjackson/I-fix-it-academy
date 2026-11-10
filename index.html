@@ -1,0 +1,901 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>I-Fix-It Academy</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=DM+Mono:wght@400;500&family=Rubik:ital,wght@0,400;0,500;0,700;1,500&display=swap">
+<style>
+/* Layout concept: a repair bench. Teal cutting-mat ground, yellow carbon-copy work orders, devices sitting on the mat. */
+:root{
+  color-scheme:dark;
+  --mat:#0f3b3d; --mat-deep:#0a2a2c; --grid:rgba(255,255,255,.06);
+  --paper:#ffe9a3; --paper-2:#fff6d6; --ink:#1a2422;
+  --stamp:#e4472b; --ok:#35d08f; --warn:#ffb224; --text:#e8f3f0; --dim:#9dbab5;
+  --steel:#c4ccd0; --line:rgba(255,255,255,.16);
+  --f-display:"Bungee","Arial Black",Impact,sans-serif;
+  --f-body:"Rubik",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"DM Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--mat-deep);color:var(--text);font:400 16px/1.5 var(--f-body);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:28px 28px;background-color:var(--mat)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+#app{max-width:1080px;margin:0 auto;padding-block:20px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{margin:0;text-wrap:balance}
+p{margin:0}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.label{font:500 11px var(--f-mono);letter-spacing:.12em;text-transform:uppercase}
+
+/* sign */
+.sign{display:flex;flex-direction:column;gap:6px}
+.sign h1{font:400 clamp(30px,7vw,56px)/1 var(--f-display);color:var(--paper);letter-spacing:.01em}
+.sign h1 span{color:var(--text)}
+.sign p{color:var(--dim);max-width:60ch}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.btn{background:var(--paper);color:var(--ink);border:0;border-radius:6px;padding:10px 18px;font-weight:700;box-shadow:0 3px 0 rgba(0,0,0,.35)}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.35)}
+.btn.ghost{background:transparent;color:var(--text);border:1.5px solid var(--line);box-shadow:none}
+.btn.red{background:var(--stamp);color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.field{background:var(--mat-deep);border:1.5px solid var(--line);color:var(--text);border-radius:6px;padding:10px 12px;font:inherit;min-width:0;width:min(280px,100%)}
+.note{color:var(--warn);font-size:14px}
+
+/* map */
+.map{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.card{width:100%;text-align:left;background:var(--paper);color:var(--ink);border:0;border-radius:4px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:6px;min-height:128px;position:relative;
+  box-shadow:0 4px 0 rgba(0,0,0,.3);background-image:repeating-linear-gradient(transparent 0 23px,rgba(26,36,34,.09) 23px 24px)}
+.card h3{font:700 18px/1.2 var(--f-body)}
+.card .label{opacity:.7}
+.card .foot{margin-top:auto;display:flex;justify-content:space-between;align-items:baseline;font:500 13px var(--f-mono)}
+.card.locked{background:transparent;color:var(--dim);border:1.5px dashed var(--line);box-shadow:none;background-image:none;cursor:not-allowed}
+.card.shop{background:var(--mat-deep);color:var(--text);border:2px solid var(--paper);background-image:none}
+.card.shop h3{font:400 20px var(--f-display);color:var(--paper)}
+.stars{color:var(--stamp);letter-spacing:2px}
+.card.shop .stars,.dark .stars{color:var(--warn)}
+
+/* play */
+.hud{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;border-bottom:1.5px solid var(--line);padding-bottom:12px}
+.hud h2{font:400 clamp(18px,3.4vw,24px) var(--f-display);color:var(--paper);margin-right:auto}
+.stat{display:flex;flex-direction:column;line-height:1.15}
+.stat b{font:500 20px var(--f-mono);font-variant-numeric:tabular-nums}
+.stat span{font:500 10px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.play{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:800px){.play{grid-template-columns:minmax(0,1fr)}}
+.stage{min-width:0;display:flex;flex-direction:column;gap:16px;align-items:center;padding:8px 0}
+.ticket{min-width:0;background:var(--paper);color:var(--ink);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 4px 0 rgba(0,0,0,.3)}
+.ticket h3{font:700 17px var(--f-body)}
+.ticket .prob{font-size:15px}
+.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.log li{font-size:14px;line-height:1.4;padding:7px 9px;border-radius:4px;background:rgba(26,36,34,.07);border-left:4px solid rgba(26,36,34,.3)}
+.log li.good{border-color:#149a63;background:rgba(53,208,143,.22)}
+.log li.bad{border-color:var(--stamp);background:rgba(228,71,43,.16)}
+.log li.clue{border-color:#b97a00;background:rgba(255,178,36,.28)}
+.log li.hint{border-style:dashed;border-color:#3a5fd0;background:rgba(58,95,208,.12)}
+.log li b{font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;display:block}
+.tbtn{background:var(--ink);color:var(--paper-2);border:0;border-radius:5px;padding:8px 12px;font-weight:500;font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.chip{background:var(--mat-deep);border:1.5px solid var(--line);border-radius:999px;padding:8px 14px;font-size:14px;color:var(--text)}
+.chip:hover{border-color:var(--paper)}
+@keyframes shake{20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes blink{50%{opacity:.25}}
+@keyframes eq{0%,100%{height:20%}50%{height:100%}}
+@keyframes pop{from{transform:scale(.6) rotate(-14deg);opacity:0}to{transform:scale(1) rotate(-8deg);opacity:1}}
+@media (prefers-reduced-motion:no-preference){.shake{animation:shake .35s}.stamp{animation:pop .35s ease-out}}
+
+/* devices */
+.laptop{width:min(560px,100%)}
+.lid{background:#16191d;border-radius:14px 14px 0 0;padding:12px 12px 14px}
+.screen{background:#e7edf4;color:#18202c;border-radius:4px;min-height:300px;display:flex;flex-direction:column;font-size:13px;line-height:1.35;position:relative}
+.screen.off{background:#05070a;align-items:center;justify-content:center;color:#3a4552}
+.base{background:linear-gradient(#cfd5d9,#98a1a7);border-radius:0 0 14px 14px;padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;color:#18202c}
+.key{background:#262b33;color:#fff;border:0;border-radius:5px;padding:7px 10px;font:500 11px var(--f-mono);box-shadow:0 2px 0 #000;display:inline-flex;gap:6px;align-items:center}
+.key:active{transform:translateY(2px);box-shadow:none}
+.led{width:8px;height:8px;border-radius:50%;background:#444;display:inline-block}
+.led.g{background:#2fe08f;box-shadow:0 0 6px #2fe08f}.led.r{background:#ff3b30;box-shadow:0 0 6px #ff3b30}.led.a{background:#ffb224;box-shadow:0 0 6px #ffb224}
+@media (prefers-reduced-motion:no-preference){.led.blink{animation:blink .7s infinite}}
+.pwr{margin-left:auto;width:34px;height:34px;border-radius:50%;border:2px solid #555;background:#262b33;color:#fff;font-size:15px;line-height:1}
+.bar{background:#fff;border-bottom:1px solid #c9d2dd;padding:6px 10px;display:flex;gap:8px;align-items:center;font-weight:500}
+.taskbar{margin-top:auto;background:#20283a;color:#cfd8ea;padding:5px 10px;font:500 11px var(--f-mono);display:flex;justify-content:space-between}
+.body{padding:12px;display:flex;flex-direction:column;gap:10px;flex:1}
+.win{background:#fff;border:1px solid #b9c3d0;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.18);text-align:left;padding:0;color:#18202c;width:100%;display:block}
+.win .tt{background:#dfe5ee;padding:6px 10px;font-weight:700;border-radius:6px 6px 0 0;display:flex;justify-content:space-between;gap:8px}
+.win .ct{padding:10px}
+.win.frozen{opacity:.75;filter:grayscale(1)}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid #7d8ba0;border-top-color:transparent;border-radius:50%;vertical-align:-2px}
+@media (prefers-reduced-motion:no-preference){.spin{animation:spin 1s linear infinite}}
+.rows{display:flex;flex-direction:column}
+.r{display:flex;justify-content:space-between;gap:10px;padding:7px 10px;border:0;border-top:1px solid #e3e8ef;background:#fff;color:#18202c;text-align:left;width:100%;font-size:13px;align-items:center}
+.r.sel{background:#cfe0ff}
+.r .st-bad{color:#c22e17;font-weight:700}
+.sbtn{background:#2f5fe0;color:#fff;border:0;border-radius:5px;padding:7px 12px;font-weight:500;font-size:13px}
+.sbtn.gray{background:#e3e8ef;color:#18202c}
+.sbtn.danger{background:#c22e17}
+.icon{background:transparent;border:0;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:#18202c;width:76px}
+.icon i{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font-style:normal;font-size:22px;color:#fff}
+.tog{width:40px;height:22px;border-radius:11px;background:#aeb8c6;position:relative;flex:none}
+.tog::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s}
+.tog.on{background:#2fb673}.tog.on::after{left:20px}
+.tablet{width:min(500px,100%);background:#111;border-radius:22px;padding:12px}
+.tablet .screen{border-radius:10px;min-height:340px}
+.phone{width:min(270px,100%);background:#111;border-radius:30px;padding:10px}
+.phone .screen{border-radius:22px;min-height:440px;background:#1b1530;color:#f1ecff}
+.sbar{display:flex;justify-content:space-between;padding:5px 12px;font:500 11px var(--f-mono);opacity:.85}
+.homebar{align-self:center;margin:8px;width:90px;height:22px;border-radius:11px;border:0;background:rgba(0,0,0,.18);color:inherit;font:500 10px var(--f-mono)}
+.phone .homebar{background:rgba(255,255,255,.18)}
+.art{width:150px;height:150px;border-radius:14px;background:conic-gradient(from 40deg,#ff8a3c,#e4472b,#7a3cff,#35d08f,#ff8a3c);align-self:center}
+.eq{display:flex;gap:4px;height:26px;align-items:flex-end;justify-content:center}
+.eq i{width:5px;background:#35d08f;height:40%}
+@media (prefers-reduced-motion:no-preference){.eq i{animation:eq .8s infinite}.eq i:nth-child(2){animation-delay:.2s}.eq i:nth-child(3){animation-delay:.4s}.eq i:nth-child(4){animation-delay:.1s}}
+.cc{background:#2b2447;border-radius:14px;margin:0 10px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.cc .r{background:#3a3160;color:#f1ecff;border:0;border-radius:8px}
+.cc .r.sel{background:#5a47b8}
+.vol{height:8px;border-radius:4px;background:#3a3160;overflow:hidden}.vol i{display:block;height:100%;background:#35d08f}
+.side{display:flex;flex-direction:column;gap:8px}
+.duo{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;align-items:flex-start;width:100%}
+.router{background:#f1f3f5;color:#18202c;border-radius:10px;padding:14px;width:min(250px,100%);display:flex;flex-direction:column;gap:10px;box-shadow:0 5px 0 #8b949a}
+.lights{display:flex;justify-content:space-between;background:#262b33;color:#fff;border:0;border-radius:6px;padding:10px;width:100%;font:500 10px var(--f-mono)}
+.lights span{display:flex;flex-direction:column;align-items:center;gap:5px}
+.cable{display:flex;align-items:center;gap:0;flex-wrap:wrap;justify-content:center;row-gap:8px}
+.cable .wire{width:26px;height:4px;background:#222}
+.part{background:#f1f3f5;color:#18202c;border:0;border-radius:8px;padding:9px 12px;font-size:13px;font-weight:500;box-shadow:0 3px 0 #8b949a;display:inline-flex;gap:8px;align-items:center}
+.printer{background:#f1f3f5;color:#18202c;border-radius:10px;padding:12px;width:min(240px,100%);display:flex;flex-direction:column;gap:8px;box-shadow:0 5px 0 #8b949a}
+.pdisp{background:#0d2b1c;color:#58f0a6;border:0;border-radius:4px;padding:8px;font:500 12px var(--f-mono);text-align:left;width:100%}
+.scam{background:#c5160a;color:#fff;border:4px solid #ffe600;border-radius:6px;padding:12px;max-width:330px;display:flex;flex-direction:column;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.scam h4{margin:0;font:400 18px var(--f-display);color:#ffe600}
+.scamwrap{flex:1;display:flex;padding:12px;background:#f3d9d6}
+.p0{justify-content:center;align-items:center}.p1{justify-content:flex-start;align-items:flex-start}.p2{justify-content:flex-end;align-items:flex-end}
+.tabs{display:flex;background:#cfd6df;padding:5px 6px 0;gap:4px}
+.tab{background:#e7edf4;border-radius:6px 6px 0 0;padding:5px 8px;font-size:12px;display:flex;gap:8px;align-items:center;min-width:0}
+.tab.on{background:#fff;font-weight:700}
+.tab button{border:0;background:#dfe5ee;color:#18202c;border-radius:50%;width:20px;height:20px;line-height:1;font-size:12px;padding:0}
+.kbd{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+
+/* result / cert */
+.panel{background:var(--paper);color:var(--ink);border-radius:4px;padding:24px;display:flex;flex-direction:column;gap:16px;box-shadow:0 4px 0 rgba(0,0,0,.3);max-width:640px;width:100%;align-self:center;position:relative}
+.panel h2{font:400 26px var(--f-display)}
+.stamp{position:absolute;top:18px;right:18px;border:4px solid var(--stamp);color:var(--stamp);font:400 22px var(--f-display);padding:2px 12px;border-radius:6px;transform:rotate(-8deg);opacity:.9}
+.lines{display:flex;flex-direction:column}
+.lines div{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px dashed rgba(26,36,34,.35);font:500 15px var(--f-mono);font-variant-numeric:tabular-nums}
+.lines .tot{font-size:20px;border-bottom:0}
+.tip{background:rgba(26,36,34,.08);padding:12px;border-radius:4px;font-size:15px}
+.cert{background:var(--paper-2);color:var(--ink);border:3px solid var(--ink);outline:2px solid var(--ink);outline-offset:-10px;padding:36px 28px;text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center;max-width:760px;width:100%;align-self:center}
+.cert h2{font:400 clamp(22px,5vw,38px)/1.1 var(--f-display)}
+.cert .who{font:italic 500 clamp(28px,6vw,46px)/1.1 var(--f-body);border-bottom:2px solid var(--ink);padding:0 24px 4px;overflow-wrap:anywhere}
+.cert .rank{font:400 20px var(--f-display);color:var(--stamp)}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 18px;width:100%;text-align:left;font:500 13px var(--f-mono)}
+.cgrid div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dotted rgba(26,36,34,.4)}
+.sigs{display:flex;gap:24px;flex-wrap:wrap;justify-content:space-around;width:100%;margin-top:14px}
+.sigs div{border-top:1.5px solid var(--ink);padding-top:4px;min-width:150px;font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase}
+
+/* shop */
+.shop{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:800px){.shop{grid-template-columns:minmax(0,1fr)}}
+.counter{min-width:0;display:flex;flex-direction:column;gap:14px}
+.cust{display:flex;gap:14px;align-items:flex-start}
+.face{font-size:64px;line-height:1;flex:none}
+.bubble{background:#fff;color:var(--ink);border-radius:4px 16px 16px 16px;padding:12px 14px;min-width:0;flex:1;display:flex;flex-direction:column;gap:6px}
+.bubble .qa{font-size:14px;border-top:1px dashed #b9c3d0;padding-top:6px}
+.pat{height:12px;background:var(--mat-deep);border:1.5px solid var(--line);border-radius:6px;overflow:hidden}
+.pat i{display:block;height:100%;background:var(--ok);transition:width .25s linear}
+.opts{display:grid;gap:8px}
+.opt{background:var(--mat-deep);border:1.5px solid var(--line);color:var(--text);border-radius:6px;padding:10px 12px;text-align:left;font-size:15px}
+.opt:hover:not(:disabled){border-color:var(--paper)}
+.opt.fix{background:var(--paper);color:var(--ink);border-color:var(--paper);font-weight:500}
+.opt:disabled{opacity:.4;cursor:not-allowed;text-decoration:line-through}
+.sidebox{min-width:0;border:1.5px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--mat-deep)}
+.up{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:14px}
+.up small{color:var(--dim);display:block}
+.outcome{border-radius:6px;padding:14px;background:var(--paper);color:var(--ink);display:flex;flex-direction:column;gap:8px}
+
+/* first-person shop */
+.shopfp{display:flex;flex-direction:column;gap:14px;max-width:880px;width:100%;align-self:center;min-width:0}
+.fp{position:relative;overflow:hidden;aspect-ratio:16/9;max-width:100%;border-radius:8px;border:3px solid #06191a;font-size:clamp(8.5px,2.1vw,19px);background:#1b5557}
+.fwall{position:absolute;inset:0 0 40% 0;background:linear-gradient(#1d5c5e,#174b4d)}
+.ffloor{position:absolute;left:-30%;right:-30%;bottom:0;height:40%;transform-origin:bottom;transform:perspective(18em) rotateX(48deg);
+  background:repeating-conic-gradient(#d9c9a6 0 25%,#b79f72 0 50%) 0 0/5em 5em}
+.fdoor{position:absolute;left:6%;bottom:40%;width:7em;height:11.5em;background:#7a4a2a;border:.4em solid #4c2c16;border-bottom:0;display:flex;flex-direction:column;align-items:center;padding-top:.8em;gap:.6em}
+.fdoor::before{content:"";width:4.4em;height:4.6em;background:linear-gradient(#ffcf7a,#ff9a5a);border:.25em solid #4c2c16}
+.fdoor span{background:#fff;color:#c22e17;font:500 .85em var(--f-mono);padding:.1em .5em;border-radius:.2em}
+.fwin{position:absolute;right:7%;top:13%;width:12em;height:6.6em;border:.45em solid #e9e2cf;background:linear-gradient(#ffb36b 0 45%,#ff7e5f 70%,#7a4a6a)}
+.fwin::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:.3em;background:#e9e2cf}
+.fneon{position:absolute;top:5%;left:50%;transform:translateX(-50%);font:400 1.9em var(--f-display);color:#3f7d7b;white-space:nowrap;border:.12em solid currentColor;border-radius:.4em;padding:0 .5em}
+.fneon.l1,.fneon.l2,.fneon.l3{color:#ffe27a;text-shadow:0 0 .4em #ffb224;box-shadow:0 0 .6em #ffb224}
+.fneon.l2{color:#ff9ad1;text-shadow:0 0 .5em #ff4fa3;box-shadow:0 0 .8em #ff4fa3}
+.fneon.l3{color:#8dfcff;text-shadow:0 0 .6em #29d9ff,0 0 1.2em #29d9ff;box-shadow:0 0 1.2em #29d9ff}
+.fshelf{position:absolute;right:7%;bottom:44%;width:12.9em;display:flex;gap:.5em;align-items:flex-end;border-bottom:.4em solid #4c2c16;padding:0 .4em}
+.fshelf i{flex:1;background:#c4ccd0;height:1.6em;border-radius:.15em}.fshelf i:nth-child(2n){height:2.3em;background:#ffe27a}.fshelf i:nth-child(3n){background:#e4472b}
+.fchairs{position:absolute;left:23%;bottom:40%;display:flex;gap:.5em}
+.fchairs i{width:2.3em;height:3.4em;background:#35d08f;border-radius:.8em .8em .2em .2em;border-bottom:1em solid #1f8a5e}
+.fcust{position:absolute;left:50%;margin-left:-5em;bottom:20%;width:10em;z-index:2;background:none;border:0;padding:0;display:flex;flex-direction:column;align-items:center;transform-origin:bottom center;font-size:1em}
+.fhead{font-size:6em;line-height:1.05}
+.fbody{width:9em;height:6.5em;border-radius:4em 4em 0 0;margin-top:-.6em}
+.fpat{width:8em;height:.8em;background:#06191a;border:.12em solid #fff;border-radius:.4em;overflow:hidden;margin-bottom:.3em}
+.fpat i{display:block;height:100%;background:var(--ok);transition:width .25s linear}
+@keyframes walkin{from{transform:translate(-15em,-4em) scale(.3)}to{transform:none}}
+@keyframes walkout{from{transform:none}to{transform:translate(-15em,-4em) scale(.3);opacity:0}}
+.fcust.gone{visibility:hidden}
+@media (prefers-reduced-motion:no-preference){.fcust.enter{animation:walkin 1.1s ease-out}.fcust.exit{animation:walkout 1.2s ease-in .5s forwards}}
+@media (prefers-reduced-motion:reduce){.fcust.exit{opacity:.35}}
+.fcounter{position:absolute;left:0;right:0;bottom:0;height:27%;z-index:3;background:linear-gradient(#9a6638,#643e20);border-top:.55em solid #c18a54;display:flex;justify-content:center;align-items:center;gap:2.6em;padding:0 8em}
+.fitem{background:none;border:0;padding:.2em;display:flex;flex-direction:column;align-items:center;gap:.3em;color:#fff;font-size:1em;border-radius:.4em;transition:transform .12s}
+.fitem:hover,.fitem.on{transform:translateY(-.35em)}
+.fitem b{font:500 max(10px,.75em) var(--f-mono);letter-spacing:.06em;text-transform:uppercase;background:rgba(0,0,0,.45);padding:.05em .5em;border-radius:.3em;white-space:nowrap}
+.fitem.on b{background:var(--paper);color:var(--ink)}
+.mini{display:block;position:relative;background:#16191d;border-radius:.3em;box-shadow:0 .3em 0 rgba(0,0,0,.35)}
+.mini i{position:absolute;inset:.3em;background:#9fd0ff;border-radius:.15em;font:500 .8em var(--f-mono);font-style:normal;display:grid;place-items:center;color:#0d2b1c}
+.mini.lp{width:5.2em;height:3.2em}.mini.lp::after{content:"";position:absolute;left:-.5em;right:-.5em;bottom:-.45em;height:.45em;background:#c4ccd0;border-radius:0 0 .3em .3em}
+.mini.ph{width:2em;height:3.6em}.mini.tb{width:4.6em;height:3.3em}
+.mini.bx{width:4.6em;height:3em;background:#e9edf0}.mini.bx i{inset:.5em 2.2em 1.4em .5em;background:#0d2b1c}
+.mini.kit{width:4.8em;height:2.7em;background:#e4472b;margin-top:.6em}.mini.kit::before{content:"";position:absolute;left:1.4em;right:1.4em;top:-.7em;height:.7em;border:.2em solid #2a2f36;border-bottom:0;border-radius:.3em .3em 0 0}
+.mini.kit i{inset:1.1em 2em auto 2em;height:.5em;background:#ffe27a}
+.mini.kit.l1,.mini.kit.l2,.mini.kit.l3{width:5.4em;height:3em}.mini.kit.l2{background:#2f5fe0}.mini.kit.l3{background:#ffb224}
+.mini.reg{width:4.8em;height:3.3em;background:#2a2f36}.mini.reg i{inset:.4em .4em 1.5em;background:#0d2b1c;color:#58f0a6}
+.fhand{position:absolute;bottom:-1.6em;width:6.5em;height:5.4em;background:#ffb224;border:.3em solid #b97a00;border-radius:3em 3em 0 0;z-index:4;pointer-events:none}
+.fhand.l{left:3%;transform:rotate(24deg)}.fhand.r{right:3%;transform:rotate(-24deg)}
+.dlg{background:#fff;color:var(--ink);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.dlg .qa{font-size:14px;border-top:1px dashed #b9c3d0;padding-top:6px}
+.ftabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.ftab{background:var(--mat-deep);border:1.5px solid var(--line);color:var(--text);border-radius:6px;padding:9px 10px;font-weight:500;font-size:14px}
+.ftab.on{background:var(--paper);color:var(--ink);border-color:var(--paper)}
+.fpanel{border:1.5px solid var(--line);border-radius:6px;padding:14px;background:var(--mat-deep);display:flex;flex-direction:column;gap:10px;min-width:0}
+
+/* walk-around shop */
+.w3{position:relative;aspect-ratio:16/10;max-width:100%;min-width:0;border-radius:8px;overflow:hidden;border:3px solid #06191a;background:#06191a}
+@media (max-width:600px){.w3{aspect-ratio:4/3}}
+.w3 canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.w3obj{position:absolute;top:8px;left:8px;right:8px;background:rgba(6,25,26,.82);color:#fff;padding:6px 10px;border-radius:6px;font-size:14px;pointer-events:none}
+.w3dot{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#fff;opacity:.75;pointer-events:none}
+.w3prompt{position:absolute;left:50%;bottom:13%;transform:translateX(-50%);max-width:88%;white-space:normal}
+.w3prompt:active{transform:translateX(-50%) translateY(2px)}
+.w3pad{position:absolute;left:8px;bottom:8px;display:grid;grid-template-columns:repeat(3,40px);grid-template-rows:repeat(2,40px);gap:4px}
+.w3pad button{background:rgba(6,25,26,.78);border:1.5px solid var(--line);border-radius:8px;color:#fff;font-size:16px;touch-action:none;user-select:none;-webkit-user-select:none;padding:0}
+.w3side{min-width:0;display:flex;flex-direction:column;gap:12px}
+</style>
+
+<div id="app"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+"use strict";
+/* ---------- helpers ---------- */
+const app = document.getElementById('app');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const shuffle = a => { a = a.slice(); for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+const fmtT = s => Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
+const starStr = n => '★'.repeat(n)+'☆'.repeat(3-n);
+const good = m => ({k:'good',m}), bad = m => ({k:'bad',m}), info = m => ({k:'info',m}), clue = m => ({k:'clue',m});
+
+const KEY = 'ifixit-v1';
+let SAVE = {name:'', best:[], shopBest:0};
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && typeof s==='object') SAVE = Object.assign(SAVE, s); } catch(e){}
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(SAVE)); } catch(e){} };
+
+/* ---------- sound ---------- */
+let AC = null, mute = false;
+function tone(f,d,type,v,when){ if (mute) return; try { AC = AC || new (window.AudioContext||window.webkitAudioContext)(); const o=AC.createOscillator(), g=AC.createGain(); o.type=type||'triangle'; o.frequency.value=f; const s=AC.currentTime+(when||0); g.gain.setValueAtTime(v||.07,s); g.gain.exponentialRampToValueAtTime(.0001,s+d); o.connect(g); g.connect(AC.destination); o.start(s); o.stop(s+d+.02); } catch(e){} }
+function sfx(k){ if(k==='good'){tone(660,.12);tone(880,.18,'triangle',.07,.1);} else if(k==='bad'){tone(150,.28,'sawtooth',.05);} else if(k==='clue'){tone(990,.12,'sine',.08);} else if(k==='win'){[523,659,784,1047].forEach((f,i)=>tone(f,.22,'triangle',.08,i*.12));} else tone(420,.04,'square',.025); }
+
+/* ---------- device builders ---------- */
+const laptop = (screen, base, cls) => `<div class="laptop"><div class="lid"><div class="screen ${cls||''}">${screen}</div></div><div class="base">${base||''}</div></div>`;
+const tog = on => `<span class="tog ${on?'on':''}"></span>`;
+
+/* ---------- levels ---------- */
+const LEVELS = [
+{ title:'Frozen Screen', dev:'Laptop', par:60,
+  prob:'You are writing an essay and the app stops responding. The mouse still moves, but clicking the essay does nothing.',
+  hints:['Clicking more will not help. Is there a tool that shows every app that is running?','Open Task Manager with the key combo, pick the app that says Not responding, and end it.','After the app closes, open it again to see if your work was recovered.'],
+  tip:'End only the frozen app, not the whole computer. On a Chromebook the Task Manager shortcut is Search + Esc. Save often so a freeze costs you nothing.',
+  init:()=>({clicks:0}),
+  view(st){
+    const procs=[['essay','Essay Writer','Not responding'],['web','Web Browser','Running'],['music','Music Player','Running'],['system','System','Running']];
+    let s='';
+    if(!st.killed){
+      s+=`<div class="body"><button class="win frozen" data-a="win"><div class="tt"><span>Essay Writer (Not Responding)</span><span>— □ ✕</span></div><div class="ct"><span class="spin"></span> My essay about volcanoes is almost done and I have not sav</div></button>`;
+      if(st.tm) s+=`<div class="win"><div class="tt"><span>Task Manager</span><button class="sbtn gray" data-a="tmx">Close</button></div><div class="rows">${procs.map(p=>`<button class="r ${st.sel===p[0]?'sel':''}" data-a="sel" data-v="${p[0]}"><span>${p[1]}</span><span class="${p[2]==='Running'?'':'st-bad'}">${p[2]}</span></button>`).join('')}</div><div class="ct"><button class="sbtn danger" data-a="end">End task</button></div></div>`;
+      s+=`</div>`;
+    } else {
+      s+=`<div class="body"><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="icon" data-a="open"><i style="background:#2f5fe0">✎</i>Essay Writer</button><button class="icon" data-a="other"><i style="background:#e4472b">♪</i>Music Player</button></div></div>`;
+    }
+    s+=`<div class="taskbar"><span>Start</span><span>10:42</span></div>`;
+    return laptop(s, `<button class="key" data-a="esc">Esc</button><button class="key" data-a="tm">Ctrl + Shift + Esc</button><button class="pwr" data-a="power" aria-label="Power button">⏻</button>`)
+      + `<div class="chips"><button class="chip" data-a="wait">Wait 30 seconds</button></div>`;
+  },
+  act(st,a,v){
+    if(a==='win'){ st.clicks++; return st.clicks>=3 ? bad('Clicking over and over piles up more commands for a frozen app. Stop clicking and try something else.') : info('No response. The window is frozen.'); }
+    if(a==='wait'){ if(!st.waited){st.waited=1; return clue('You waited 30 seconds. Still frozen. Good first move, because sometimes an app is only busy.');} return info('Still frozen. Time to act.'); }
+    if(a==='esc') return info('Esc did not help this time.');
+    if(a==='tm'){ st.tm=1; return good('Task Manager opened. It lists every app that is running.'); }
+    if(a==='tmx'){ st.tm=0; return null; }
+    if(a==='sel'){ st.sel=v; return null; }
+    if(a==='end'){ if(!st.sel) return info('Select an app in the list first.');
+      if(st.sel==='essay'){ st.killed=1; return good('Essay Writer closed. The rest of the laptop works again.'); }
+      if(st.sel==='system') return bad('Never end System. That can crash the whole computer.');
+      return bad('That app was working fine. Only end the one that says Not responding.'); }
+    if(a==='other') return info('That app works. Now check on your essay.');
+    if(a==='open'){ st.done=1; return good('Essay Writer reopened and AutoRecover brought back your work.'); }
+    if(a==='power') return bad('Holding the power button forces a shutdown. You lose unsaved work in every app. Keep that for when nothing else responds.');
+  }
+},
+{ title:'No Wi-Fi', dev:'Tablet', par:70,
+  prob:'Your tablet worked at home this morning. Now at school it will not load any page, and it does not even show Wi-Fi networks.',
+  hints:['Look at the small icons at the top of the tablet screen. One of them is unusual.','Airplane mode switches off every wireless signal. Turn it off in Settings.','Turn Wi-Fi on, join the network you know, then open the browser to prove it works.'],
+  tip:'Read the status icons first. Join only networks you know. After any fix, test it to confirm the problem is really gone.',
+  init:()=>({page:'home',air:true,wifi:false,conn:false}),
+  view(st){
+    let b='';
+    const sb=`<div class="sbar"><span>9:15</span><span>${st.air?'✈ ':''}${st.conn?'Wi-Fi ▂▄▆ ':''}82%</span></div>`;
+    if(st.page==='home') b=`<div class="body"><div style="display:flex;gap:12px;flex-wrap:wrap"><button class="icon" data-a="browser"><i style="background:#2f5fe0">◎</i>Browser</button><button class="icon" data-a="settings"><i style="background:#5b6675">⚙</i>Settings</button><button class="icon" data-a="photos"><i style="background:#e08a2f">▣</i>Photos</button></div></div>`;
+    else if(st.page==='browser') b=`<div class="bar">◎ school-portal.example</div><div class="body" style="align-items:center;justify-content:center;text-align:center">${st.conn?'<b style="font-size:18px">School Portal</b><span>Welcome back. Your classes are loaded.</span>':'<b style="font-size:18px">No internet connection</b><span>Check your network settings.</span>'}</div>`;
+    else {
+      const nets=[['free','FREE_WIFI_CLICK_ME','Open'],['school','School-Student','Secured'],['neighbor','NETGEAR-Apt4B','Secured']];
+      b=`<div class="bar">⚙ Settings</div><div class="rows">
+        <button class="r" data-a="air"><span>✈ Airplane mode</span>${tog(st.air)}</button>
+        <button class="r" data-a="wifi" style="${st.air?'opacity:.5':''}"><span>Wi-Fi ${st.conn?'· School-Student':''}</span>${tog(st.wifi)}</button>
+        ${st.wifi&&!st.conn?nets.map(n=>`<button class="r" data-a="net" data-v="${n[0]}" style="padding-left:28px"><span>${n[1]}</span><span>${n[2]}</span></button>`).join(''):''}
+        <button class="r" data-a="bt"><span>Bluetooth</span>${tog(false)}</button>
+        <button class="r" data-a="reset"><span style="color:#c22e17">Erase all content (factory reset)</span><span>›</span></button></div>`;
+    }
+    return `<div class="tablet"><div class="screen">${sb}${b}<button class="homebar" data-a="home" style="margin-top:auto">Home</button></div></div>`;
+  },
+  act(st,a,v){
+    if(a==='home'){ st.page='home'; return null; }
+    if(a==='settings'){ st.page='settings'; return null; }
+    if(a==='photos') return info('Photos opens fine. The tablet itself is working.');
+    if(a==='browser'){ st.page='browser'; if(st.conn){ st.done=1; return good('The page loads. Fix confirmed.'); } return info('Still no connection.'); }
+    if(a==='air'){ st.air=!st.air; if(st.air){ st.wifi=false; st.conn=false; return info('Airplane mode is on. All wireless signals are off.'); } return good('Airplane mode off. Wireless can turn on again.'); }
+    if(a==='wifi'){ if(st.air) return info('Wi-Fi is greyed out. Something is blocking all wireless signals.'); st.wifi=!st.wifi; if(!st.wifi) st.conn=false; return st.wifi?info('Wi-Fi is on. Pick a network.'):null; }
+    if(a==='net'){ if(v==='school'){ st.conn=true; return good('Connected to School-Student. Now check that it really works.'); }
+      if(v==='free') return bad('Open networks with strange names can spy on what you do. Join only networks you know.');
+      return bad('That network belongs to someone else and it is locked. Use your own network.'); }
+    if(a==='bt') return info('Bluetooth is for headphones and keyboards. It will not bring back the internet.');
+    if(a==='reset') return bad('A factory reset erases everything on the tablet. It is a last resort, never a first step.');
+  }
+},
+{ title:'Incorrect Password', dev:'Laptop', par:60,
+  prob:'Your password is river42, all lowercase. You are sure you typed it correctly, but the laptop says it is wrong.',
+  hints:['Use the eye button to see what you are really typing.','Passwords treat capital and lowercase letters as different. Look at the keyboard for a light.','Turn off Caps Lock, then type river42 and sign in.'],
+  tip:'Before you reset a password, check Caps Lock and look at what you typed. Guessing again and again can lock the account.',
+  init:()=>({caps:true,val:'',show:false,tries:0}),
+  view(st){
+    const s=`<div class="body" style="align-items:center;justify-content:center;background:#20283a;color:#fff;border-radius:4px">
+      <div style="width:56px;height:56px;border-radius:50%;background:#5b7be0;display:grid;place-items:center;font-size:24px">S</div><b>Student</b>
+      <div style="display:flex;gap:6px;width:min(260px,100%)"><input data-in="pw" id="pw" type="${st.show?'text':'password'}" value="${esc(st.val)}" placeholder="Password" autocomplete="off" autocapitalize="off" spellcheck="false" style="flex:1;min-width:0;padding:8px;border-radius:5px;border:0;font:500 14px var(--f-mono);color:#18202c;background:#fff"><button class="sbtn gray" data-a="eye" aria-label="Show password">${st.show?'Hide':'👁'}</button></div>
+      <button class="sbtn" data-a="sign">Sign in</button>
+      <button data-a="forgot" style="background:none;border:0;color:#a9c0ff;text-decoration:underline;font-size:12px">Forgot password?</button></div>`;
+    const keys=['tab','Q','W','E','R','T','Y'].map(k=>`<span class="key">${k}</span>`).join('');
+    return laptop(s, `<div class="kbd">${keys}<button class="key" data-a="caps"><span class="led ${st.caps?'g':''}"></span>caps lock</button><span class="key">A</span><span class="key">S</span><span class="key">D</span><span class="key">shift</span></div>`)
+      + `<p style="color:var(--dim);font-size:14px;text-align:center">Click the password box and type with your real keyboard.</p>`;
+  },
+  act(st,a){
+    if(a==='eye'){ st.show=!st.show; st._focus='pw'; if(st.show && !st.val) return info('Type something first, then you can see it.'); if(st.show && /[A-Z]/.test(st.val)) return clue('Look at that. The letters are coming out in CAPITALS.'); return null; }
+    if(a==='caps'){ st.caps=!st.caps; st.val=''; st._focus='pw'; return st.caps?info('Caps Lock is on.'):good('Caps Lock is off. Now your letters stay lowercase.'); }
+    if(a==='sign'){ st._focus='pw'; if(st.val==='river42'){ st.done=1; return good('Signed in.'); }
+      st.val=''; st.tries++; if(st.tries>=3){ st.tries=0; return bad('Too many wrong tries. The account is locked for 15 minutes. Stop guessing and look for a cause.'); }
+      return info('Incorrect password. '+(3-st.tries)+(3-st.tries===1?' try':' tries')+' left before the account locks.'); }
+    if(a==='forgot') return bad('A reset works, but it takes a long time and you already know your password. Check the simple causes first.');
+  }
+},
+{ title:'Music Not Working', dev:'Phone', par:50,
+  prob:'You press play on your favorite song. The app looks like it is playing, but no sound comes out of the phone.',
+  hints:['Try the volume buttons on the side of the phone.','Volume is up but still silent? Pull down the control panel and see where the sound is being sent.','Switch the audio output to Phone speaker, or turn Bluetooth off.'],
+  tip:'One problem can have two causes. Check volume first, then check where the sound is going. Bluetooth headphones in a backpack can steal your audio.',
+  init:()=>({vol:0,bt:true,out:'buds',cc:false,menu:false}),
+  view(st){
+    const loud = st.vol>0 && st.out==='spk';
+    let s=`<div class="sbar"><span>3:07</span><span>${st.bt?'ᛒ ':''}${st.vol===0?'🔇':'🔊'} 64%</span></div><button class="homebar" data-a="cc" style="width:150px;margin:0 auto 6px">${st.cc?'Close panel':'Pull down panel'}</button>`;
+    if(st.cc) s+=`<div class="cc"><div class="label">Volume ${st.vol}%</div><div class="vol"><i style="width:${st.vol}%"></i></div>
+      <button class="r" data-a="bt"><span>Bluetooth${st.bt?' · Jay’s Earbuds':''}</span>${tog(st.bt)}</button>
+      <div class="label">Play sound on</div>
+      ${st.bt?`<button class="r ${st.out==='buds'?'sel':''}" data-a="out" data-v="buds"><span>Jay’s Earbuds</span><span>${st.out==='buds'?'✓':''}</span></button>`:''}
+      <button class="r ${st.out==='spk'?'sel':''}" data-a="out" data-v="spk"><span>Phone speaker</span><span>${st.out==='spk'?'✓':''}</span></button>
+      <button class="r" data-a="dnd"><span>Do Not Disturb</span>${tog(false)}</button></div>`;
+    else s+=`<div class="body" style="align-items:stretch;text-align:center"><div style="display:flex;justify-content:flex-end"><button class="sbtn gray" data-a="menu" aria-label="Menu">⋮</button></div>
+      ${st.menu?`<div class="rows"><button class="r" data-a="restart"><span>Restart phone</span></button><button class="r" data-a="uninstall"><span style="color:#c22e17">Uninstall music app</span></button></div>`:''}
+      <div class="art"></div><b style="font-size:16px">Desert Drive</b><span style="opacity:.7">The Saguaros</span><div class="eq"><i></i><i></i><i></i><i></i></div>
+      <button class="sbtn" data-a="play" style="align-self:center">❚❚ Playing 1:12 / 3:40</button>
+      <span class="label" style="opacity:.8">${loud?'♪ ♫ sound from speaker ♫ ♪':'speaker: silent'}</span></div>`;
+    return `<div class="duo"><div class="phone"><div class="screen">${s}</div></div><div class="side"><span class="label" style="color:var(--dim)">Side buttons</span><button class="part" data-a="vup">Volume +</button><button class="part" data-a="vdn">Volume −</button></div></div>`;
+  },
+  act(st,a,v){
+    let r=null;
+    if(a==='cc'){ st.cc=!st.cc; st.menu=false; }
+    else if(a==='menu'){ st.menu=!st.menu; }
+    else if(a==='vup'){ const was=st.vol; st.vol=Math.min(100,st.vol+20); r = was===0 && st.out!=='spk' ? clue('The volume was at zero. It is up now, but the speaker is still silent. Where is the sound going?') : info('Volume '+st.vol+'%.'); }
+    else if(a==='vdn'){ st.vol=Math.max(0,st.vol-20); r=info('Volume '+st.vol+'%.'); }
+    else if(a==='bt'){ st.bt=!st.bt; st.out=st.bt?'buds':'spk'; r=st.bt?info('Bluetooth on. The phone reconnected to Jay’s Earbuds.'):good('Bluetooth off. Sound goes back to the phone speaker.'); }
+    else if(a==='out'){ st.out=v; r=v==='spk'?good('Sound is set to the phone speaker.'):info('Sound is going to the earbuds. They are zipped in a backpack.'); }
+    else if(a==='dnd') r=info('Do Not Disturb silences notifications, not music.');
+    else if(a==='play'){ r = st.playSeen ? info('The song is playing.') : clue('The timer is moving, so the app is playing. The app is not the problem.'); st.playSeen=1; }
+    else if(a==='restart'){ st.menu=false; r=bad('The restart took two minutes, and the phone reconnected to the earbuds right after. Still silent.'); }
+    else if(a==='uninstall'){ st.menu=false; r=bad('Deleting the app erases your playlists and does not fix the cause. The app was playing fine.'); }
+    if(st.vol>0 && st.out==='spk'){ st.done=1; r=good('Music! It took two fixes: the volume and the output.'); }
+    else if(st.out==='spk' && st.vol===0 && r && r.k==='good') r=clue('Sound is set to the speaker, but you still hear nothing. One more thing to check.');
+    return r;
+  }
+},
+{ title:'Won’t Turn On', dev:'Laptop', par:60,
+  prob:'You press the power button on your laptop and nothing happens. The screen stays black. It was plugged in all night.',
+  hints:['Is there a charging light? What is it doing?','Follow the charger cable from the laptop all the way to the wall.','The power strip is switched off. Turn it on, then press the power button.'],
+  tip:'Follow the power. Check every connection from the device to the wall before you decide something is broken.',
+  init:()=>({strip:false,presses:0}),
+  view(st){
+    const s = st.done ? `<b style="color:#fff;font-size:20px">Starting up…</b>` : `<span>(black screen)</span>`;
+    return laptop(s, `<button class="key" data-a="led"><span class="led ${st.strip?'a':''}"></span>charge light</button><button class="pwr" data-a="power" aria-label="Power button">⏻</button>`, st.done?'':'off')
+    + `<div class="cable"><button class="part" data-a="port">Laptop charging port</button><span class="wire"></span><button class="part" data-a="brick"><span class="led ${st.strip?'g':''}"></span>Charger brick</button><span class="wire"></span><button class="part" data-a="strip"><span class="led ${st.strip?'r':''}"></span>Power strip switch: ${st.strip?'ON':'OFF'}</button></div>
+    <div class="chips"><button class="chip" data-a="open">Open the laptop with a screwdriver</button><button class="chip" data-a="shake">Shake the laptop</button></div>`;
+  },
+  act(st,a){
+    if(a==='power'){ if(st.strip){ st.done=1; return good('The laptop starts. The battery was empty because no power was reaching it.'); }
+      st.presses++; return st.presses>=3 ? bad('Pressing the button again and again will not help. Look for a cause. Is power even reaching the laptop?') : info('Nothing. No lights, no sound.'); }
+    if(a==='led') return st.strip?info('The charge light is amber. Power is flowing.'):clue('The charge light is off. A working charger should light it. Follow the cable.');
+    if(a==='port') return info('The charger is pushed firmly into the laptop. This end is fine.');
+    if(a==='brick') return st.strip?info('The brick light is green.'):clue('The light on the charger brick is off too. No power is reaching the charger.');
+    if(a==='strip'){ st.strip=!st.strip; return st.strip?good('The power strip was switched off. Now its light is on and the laptop charge light turned amber.'):info('Power strip off again.'); }
+    if(a==='open') return bad('Opening a laptop is risky and can cancel the warranty. Check everything on the outside first.');
+    if(a==='shake') return bad('Shaking can damage the parts inside. It never fixes a power problem.');
+  }
+},
+{ title:'Internet Outage', dev:'Laptop + Router', par:90,
+  prob:'The laptop says it is connected to Wi-Fi, but no website will load. Find out where the problem is, then fix it.',
+  hints:['First find out how big the problem is. Is it one website, one device, or the whole network?','Look at the lights on the router. One of them is the wrong color.','Unplug the router power, wait the full 30 seconds, plug it back in, then reload the page.'],
+  tip:'Narrow it down: one site, one device, or the whole network? A full 30 second unplug restarts a router safely. The reset pinhole erases its settings.',
+  init:()=>({clues:0,plug:true,count:0}),
+  view(st){
+    const s=`<div class="bar"><button class="sbtn gray" data-a="reload">⟳ Reload</button><span style="min-width:0;overflow-wrap:anywhere">homework-help.example</span><span style="margin-left:auto;font-size:11px">Wi-Fi ▂▄▆${st.fixed?'':' !'}</span></div>
+      <div class="body" style="align-items:center;justify-content:center;text-align:center">${st.done?'<b style="font-size:18px">Homework Help</b><span>The page loaded.</span>':'<b style="font-size:18px">This site can’t be reached</b><span>Connected to Wi-Fi, but there is no internet.</span><button class="sbtn" data-a="other">Try a different website</button>'}</div>`;
+    const on=st.plug, i = !on?'':st.booting?'a blink':st.fixed?'g':'r blink';
+    return `<div class="duo">${laptop(s,'')}<div class="router"><b>Router</b>
+      <button class="lights" data-a="lights"><span><i class="led ${on?'g':''}"></i>POWER</span><span><i class="led ${on&&!st.booting?'g':''}"></i>WI-FI</span><span><i class="led ${i}"></i>INTERNET</span></button>
+      ${!on?`<div class="mono" style="text-align:center">Unplugged. Wait: ${st.count}s</div>`:''}
+      <button class="part" data-a="plug">${on?'Unplug power cable':'Plug power back in'}</button>
+      <button class="part" data-a="reset" style="font-size:11px">● RESET pinhole</button></div></div>
+      <div class="chips"><button class="chip" data-a="phone">Check a phone on the same Wi-Fi</button></div>`;
+  },
+  act(st,a){
+    if(a==='reload'){ if(st.fixed){ st.done=1; return good('The page loads. The internet is back.'); } return info('Still can’t reach the site.'); }
+    if(a==='other'){ if(!st.c1){st.c1=1; st.clues++;} return clue('A different website fails too. So this is not one broken website.'); }
+    if(a==='phone'){ if(st.fixed) return info('The phone is online too.'); if(!st.c2){st.c2=1; st.clues++;} return clue('The phone has no internet either. So the laptop is not the problem. It is the network.'); }
+    if(a==='lights'){ if(!st.plug) return info('All lights are off. The router has no power.'); if(st.booting) return info('The router is still starting up.'); if(st.fixed) return info('All three lights are green.'); if(!st.c3){st.c3=1; st.clues++;} return clue('Power is green. Wi-Fi is green. Internet is red. The router lost its link to the internet company.'); }
+    if(a==='reset') return bad('That pinhole is a factory reset. It erases the Wi-Fi name and password. Unplugging is the safe way to restart.');
+    if(a==='plug'){
+      if(st.plug){ if(st.fixed) return info('It is working now. Leave it plugged in.'); if(!st.clues) return bad('Slow down. First find out where the problem is: this website, this laptop, or the whole network?');
+        st.plug=false; st.count=30; const run=G.run; const iv=setInterval(()=>{ if(run!==G.run||st.plug){clearInterval(iv);return;} st.count--; if(st.count<=0){st.count=0;clearInterval(iv);} paintPlay(); },100);
+        return info('Router unplugged. Give it 30 seconds to clear its memory.'); }
+      if(st.count>0) return bad('Too soon. Leave it unplugged for the full 30 seconds or it will not restart completely.');
+      st.plug=true; st.booting=true; const run=G.run; setTimeout(()=>{ if(run!==G.run) return; st.booting=false; st.fixed=true; pushLog(good('All lights are green. Now check a web page.')); sfx('good'); paintPlay(); },2000);
+      return info('Plugged in. The router is starting up.'); }
+  }
+},
+{ title:'Printer Won’t Print', dev:'Laptop + Printer', par:80,
+  prob:'You pressed Print six times for your science report and nothing came out of the Room 12 printer next to you.',
+  hints:['Look at the small screen on the printer itself.','Check which printer the laptop is sending the report to.','Load paper, choose Room 12 Printer, cancel the extra jobs, then press Print one time.'],
+  tip:'Check the printer before you press Print again. Every extra click adds another copy to the line. Always confirm which printer is selected.',
+  init:()=>({paper:false,printer:'lib',jobs:6}),
+  view(st){
+    const P=[['lib','Library Printer'],['room','Room 12 Printer'],['pdf','Save as PDF']];
+    const s=`<div class="body"><div class="win"><div class="tt"><span>Print: Science_Report</span></div><div class="ct" style="display:flex;flex-direction:column;gap:8px">
+      <span class="label">Send to</span><div class="rows">${P.map(p=>`<button class="r ${st.printer===p[0]?'sel':''}" data-a="dest" data-v="${p[0]}"><span>${p[1]}</span><span>${st.printer===p[0]?'✓':''}</span></button>`).join('')}</div>
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><span>Waiting in line: <b>${st.jobs} job${st.jobs===1?'':'s'}</b></span><button class="sbtn gray" data-a="cancel">Cancel extra jobs</button></div>
+      <button class="sbtn" data-a="print">Print</button></div></div></div>`;
+    return `<div class="duo">${laptop(s,'')}<div class="printer"><b>Room 12 Printer</b><button class="pdisp" data-a="disp">${st.done?'Printing…':st.paper?'Ready':'! Tray empty'}</button>
+      <button class="part" data-a="tray">Paper tray: ${st.paper?'full':'empty'}</button><button class="part" data-a="ink">Ink cover</button></div></div>
+      <div class="chips"><button class="chip" data-a="tray">Pick up a stack of paper</button><button class="chip" data-a="hit">Smack the printer</button></div>`;
+  },
+  act(st,a,v){
+    if(a==='disp') return st.paper?info('The printer screen says Ready.'):clue('The printer screen says: Tray empty. Load paper.');
+    if(a==='tray'){ if(st.paper) return info('The tray is already full.'); st.paper=true; return good('Paper loaded. The printer says Ready.'); }
+    if(a==='ink') return info('Ink levels are fine.');
+    if(a==='hit') return bad('Hitting a printer can break it and it never helps. Read what the printer is telling you.');
+    if(a==='dest'){ st.printer=v; return v==='room'?good('Room 12 Printer selected. That is the one next to you.'):v==='pdf'?info('That saves a file. Nothing comes out of a printer.'):info('The Library Printer is on the other side of the school.'); }
+    if(a==='cancel'){ if(st.jobs<=1) return info('Only one job is waiting.'); st.jobs=1; return good('Extra jobs cancelled. Only one copy will print.'); }
+    if(a==='print'){
+      if(st.printer==='pdf') return bad('That saved a file. Nothing printed. Check the Send to list.');
+      if(st.printer!=='room'){ return bad('The job went to the Library Printer across the school. Always check which printer is selected.'); }
+      if(!st.paper){ st.jobs++; return bad('Nothing printed, and now '+st.jobs+' jobs are waiting. Pressing Print again never fixes a printer. Check the printer itself.'); }
+      st.done=1; if(st.jobs>1) return bad('All '+st.jobs+' copies printed. That is a lot of wasted paper. Clear the line before you print.');
+      return good('One clean copy printed.'); }
+  }
+},
+{ title:'Scary Pop-Up', dev:'Laptop', par:45,
+  prob:'You were looking for game tips and a loud red warning filled the screen. It says your computer has viruses and you must act now.',
+  hints:['Real virus warnings do not come from a web page. Do not do anything the pop-up asks.','The X on the pop-up is part of the ad. Look at the top of the browser instead.','Close the whole browser tab, then tell your teacher what happened.'],
+  tip:'A scary message that rushes you is almost always a scam. Do not click, call, download, or type a password. Close the tab and tell a trusted adult.',
+  init:()=>({pos:0}),
+  view(st){
+    let s=`<div class="tabs">${st.closed?'':`<span class="tab on"><span>Free Game Cheats</span><button data-a="tab" aria-label="Close tab">✕</button></span>`}<span class="tab ${st.closed?'on':''}"><span>School Portal</span></span></div>`;
+    if(!st.closed) s+=`<div class="scamwrap p${st.pos}"><div class="scam"><div style="display:flex;justify-content:space-between;gap:8px"><h4>WARNING!</h4><button class="sbtn gray" data-a="fx" aria-label="Close pop-up">✕</button></div>
+      <b>37 VIRUSES FOUND on this computer!</b><span>Your files will be deleted in 0:59. Act NOW!</span>
+      <button class="sbtn gray" data-a="dl">Download CleanerPro.exe</button><button class="sbtn gray" data-a="call">Call 1-800-555-0199</button><button class="sbtn gray" data-a="pw">Type your password to scan</button></div></div>`;
+    else s+=`<div class="body" style="align-items:center;justify-content:center;text-align:center"><b style="font-size:18px">School Portal</b><span>Everything looks normal again.</span></div>`;
+    return laptop(s,'') + (st.closed?`<div class="chips"><button class="chip" data-a="tell">Tell your teacher what happened</button><button class="chip" data-a="back">Go back to the cheats site</button></div>`:'');
+  },
+  act(st,a){
+    if(a==='dl') return bad('That download IS the virus. Real warnings never come from a web page.');
+    if(a==='call') return bad('Scammers answer that number. They ask for money or for control of your computer.');
+    if(a==='pw') return bad('Never type a password into a pop-up. That is how accounts get stolen.');
+    if(a==='fx'){ st.pos=(st.pos+1)%3; if(!st.fxSeen){ st.fxSeen=1; return clue('The pop-up jumped. That X is fake. It is part of the ad.'); } return info('It moved again. That X will never close it.'); }
+    if(a==='tab'){ st.closed=1; return good('Tab closed. The warning is gone because it was only a web page.'); }
+    if(a==='back') return bad('The same site will show the same scam. Stay away from it.');
+    if(a==='tell'){ st.done=1; return good('Reported. Your teacher can block the site and check the laptop.'); }
+  }
+}
+];
+const N = LEVELS.length;
+
+/* ---------- shop cases ---------- */
+const CASES = [
+ {dev:'Laptop', say:'My laptop is just… stuck. The arrow moves but nothing I click does anything.', q:[['Is one app stuck, or everything?','Just my drawing app. The top says Not Responding.'],['Have you saved your work lately?','Um. Not for an hour.'],['What color is your laptop?','Purple. Why?']], fix:['End the frozen app in Task Manager','Hold the power button for 10 seconds','Reinstall the whole operating system','Buy more memory'], why:'Only one app was frozen, so ending that app fixes it without losing work in everything else.'},
+ {dev:'Tablet', say:'The internet is gone on my tablet! It was fine before my trip.', q:[['Do other devices at your house work?','Yeah, my brother is gaming just fine.'],['Any new little icons at the top of the screen?','A tiny airplane showed up after my flight.'],['How old is the tablet?','I got it for my birthday.']], fix:['Turn off Airplane mode','Restart the home router','Call the internet company','Factory reset the tablet'], why:'Other devices worked, so the network was fine. The airplane icon means all wireless was switched off.'},
+ {dev:'Home network', say:'Nothing in my house has internet. The TV, the phones, nothing!', q:[['What do the lights on the router look like?','Two are green and one is red.'],['Have you tried unplugging the router?','No, I am scared to touch it.'],['Is your phone charged?','It is at 90 percent.']], fix:['Unplug the router for 30 seconds, then plug it back in','Turn off Airplane mode on one phone','Buy a new TV','Clear the browser history'], why:'Every device was offline and the router had a red light, so the router needed a restart.'},
+ {dev:'Laptop', say:'It keeps saying wrong password but I KNOW it is right!', q:[['Is there a small light on at the left side of the keyboard?','Hmm. Yes, there is a little light on.'],['Does the password work on another device?','Yes, I can log in on my phone.'],['What is your favorite color?','Green?']], fix:['Turn off Caps Lock and type it again','Reset the password','Make a brand new account','Replace the keyboard'], why:'The password worked on a phone, so it was correct. Caps Lock was changing the letters.'},
+ {dev:'Phone', say:'My videos are silent. Like a mime. No sound at all.', q:[['Is the volume turned up?','All the way up.'],['Do you use wireless earbuds?','Yeah, they are at home in my room. They are always on.'],['Which video app do you use?','All of them are silent.']], fix:['Switch the sound to the phone speaker or turn off Bluetooth','Buy new speakers','Reinstall the video app','Turn the volume up more'], why:'Volume was up and every app was silent, so the sound was being sent to the earbuds.'},
+ {dev:'Laptop', say:'My laptop died forever. Black screen. Rest in peace.', q:[['Does a charging light come on when you plug it in?','No light at all.'],['Where is the charger plugged in?','A power strip under my desk. My cat sleeps there.'],['Did you drop it?','No way, I am careful.']], fix:['Check that the power strip is on and the charger is plugged in','Replace the battery','Replace the screen','Reinstall the operating system'], why:'No charging light means no power is arriving. The cat probably bumped the power strip switch.'},
+ {dev:'Printer', say:'The printer hates me. I pressed print like ten times.', q:[['What does the little screen on the printer say?','Something about a tray?'],['Which printer is picked on your computer?','The right one. We only have one.'],['Is the printer new?','Kind of.']], fix:['Load paper and cancel the extra print jobs','Buy new ink','Reinstall the printer','Press Print again'], why:'A tray message means it is out of paper. Ten clicks means ten copies are waiting in line.'},
+ {dev:'Laptop', say:'My computer says it has 37 viruses and I need to call a phone number right now!', q:[['Where does the message show up?','In my web browser, on a game cheats site.'],['Did you call or download anything yet?','Not yet. I came here first.'],['How fast is your internet?','Pretty fast.']], fix:['Close the browser tab. It is a scam ad.','Call the number on the screen','Download the cleaner it offers','Pay for the virus removal'], why:'A warning inside a web page that rushes you is a scam. Closing the tab makes it go away.'},
+ {dev:'Phone', say:'My phone internet is super slow, but only at home.', q:[['Where in the house do you use it?','My room in the basement. The router is in the attic.'],['Is it slow at school too?','No, it is fast at school.'],['What games do you play?','Racing games mostly.']], fix:['Move closer to the router or move the router to the middle of the house','Buy a new phone','Delete all your photos','Keep Airplane mode on'], why:'It was fast everywhere else. Wi-Fi gets weak through floors and walls, so distance was the cause.'},
+ {dev:'Wireless mouse', say:'The arrow on my screen will not move at all!', q:[['Is your mouse wireless?','Yes, no cord.'],['Is the light on the bottom of the mouse on?','No, it is dark.'],['Is your desk clean?','Kind of.']], fix:['Check the mouse switch and change the batteries','Reinstall the operating system','Buy a new computer','Clean the screen'], why:'No light under a wireless mouse means it has no power. Batteries or the switch come first.'},
+ {dev:'Laptop', say:'My computer is sooo slow. Everything takes forever.', q:[['How many tabs and apps are open?','Like 60 tabs. I need them all.'],['When did you last restart it?','Restart? Maybe two months ago.'],['Is the laptop heavy?','Not really.']], fix:['Close tabs you are not using and restart','Buy a new computer','Delete system files','Get faster internet'], why:'Dozens of tabs and months without a restart use up memory. Closing and restarting frees it.'},
+ {dev:'Tablet', say:'My tablet will not let me take any more pictures!', q:[['What exactly does the message say?','It says Storage almost full.'],['Do you have lots of videos or games?','About 200 videos of my hamster.'],['Is the camera lens clean?','I think so.']], fix:['Delete or back up old files to free up storage','Restart the router','Turn the brightness up','Buy a new charger'], why:'The exact message named the cause. Reading the error message is often the fastest clue.'},
+ {dev:'Laptop', say:'On my video call, nobody can hear me. I am yelling!', q:[['What does the microphone button look like?','It has a red line through it.'],['Can you hear them?','Yes, I hear them fine.'],['Is your camera on?','Yes, they see me.']], fix:['Click the microphone button to unmute','Talk louder','Buy a new headset','Restart the router'], why:'A red line through the microphone means muted. The call itself was working.'},
+ {dev:'Phone', say:'My screen is so dark I can barely see anything.', q:[['Is there a new icon by the battery?','There is a little leaf by the battery.'],['Where is the brightness slider set?','Oh. It is almost all the way down.'],['Is the phone case new?','No.']], fix:['Turn brightness up and turn off battery saver','Replace the screen','Buy a new phone','Restart the router'], why:'Battery saver dims the screen. The slider and the leaf icon both pointed to a setting, not a broken screen.'}
+];
+const LOOKS=['The title bar of the drawing app says Not Responding. The clock in the corner is still ticking.','A small airplane icon sits at the top of the screen. The Wi-Fi symbol is missing.','You plug their router in. The Power and Wi-Fi lights turn green. The Internet light stays red.','A tiny green light is glowing on the Caps Lock key.','A Bluetooth symbol is at the top of the screen. The volume bar is full.','You plug it into your shop charger. The charge light turns amber right away.','The paper tray is empty. The little screen shows 10 jobs waiting.','The warning is inside a browser tab. The web address is a jumble of letters, not a real company.','In your shop the phone loads pages fast. Wi-Fi shows full bars here.','You flip the mouse over. The switch is on, but there is no light. The battery door rattles.','The browser has so many tabs you cannot read their names. The fan is roaring.','Settings shows the storage bar completely full. Most of it is videos.','In the call window, the microphone button has a red line through it.','A leaf icon sits next to the battery. The brightness slider is near the bottom.'];
+CASES.forEach((c,i)=>c.look=LOOKS[i]);
+const SHIRTS=['#e4472b','#2f5fe0','#35a06f','#8a4fd0','#e08a2f','#d0457f'];
+const FACES=['👵','👴','👩','👨','🧑','👧','👦','🧔'];
+const NAMES=['Mrs. Ortega','Mr. Bell','Coach Kim','Nana Jo','Dr. Patel','Ms. Rivers','Mr. Okafor','Tia Rosa','Big Mike','Ms. Chen','Abuelo Luis','Mr. Novak'];
+const UPS=[{id:'tools',name:'Better tool kit',d:'+25% pay per job'},{id:'chairs',name:'Comfy waiting chairs',d:'Customers wait longer'},{id:'sign',name:'Neon shop sign',d:'+$5 tips'}];
+const UPCOST=[60,140,260];
+
+/* ---------- game state ---------- */
+const G = {screen:'home', li:0, st:null, mist:0, hints:0, log:[], t0:0, run:0, locked:false, res:null, msg:''};
+let SH = null;
+const unlocked = i => i===0 || !!SAVE.best[i-1];
+const certified = () => { for(let i=0;i<N;i++) if(!SAVE.best[i]) return false; return true; };
+const total = () => SAVE.best.reduce((a,b)=>a+(b?b.score:0),0);
+
+/* ---------- screens ---------- */
+function home(){
+  const done=SAVE.best.filter(Boolean).length, cert=certified();
+  const next = (()=>{ for(let i=0;i<N;i++) if(!SAVE.best[i]) return i; return -1; })();
+  app.innerHTML = `
+  <header class="sign"><span class="label" style="color:var(--dim)">Tech support training bench</span><h1>I-Fix-It <span>Academy</span></h1>
+    <p>Eight broken devices are waiting on the bench. Fix each one the right way to unlock the next. You score for accuracy and for speed. Finish all eight to earn your certificate and open the I-Fix-It Shop.</p></header>
+  <div class="row"><label class="label" for="nm">Technician name</label><input class="field" id="nm" maxlength="28" placeholder="Type your name" value="${esc(SAVE.name)}" autocomplete="off">
+    ${next>=0?`<button class="btn" data-go="level" data-v="${next}">${done?'Continue':'Start'}: work order ${String(next+1).padStart(2,'0')}</button>`:`<button class="btn" data-go="cert">View certificate</button>`}
+    <button class="btn ghost" data-go="mute">${mute?'Sound: off':'Sound: on'}</button></div>
+  ${G.msg?`<p class="note">${esc(G.msg)}</p>`:''}
+  <div class="row"><span class="mono">${done} / ${N} fixed</span><span class="mono">Total score ${total().toLocaleString()}</span></div>
+  <ol class="map">${LEVELS.map((L,i)=>{ const b=SAVE.best[i], open=unlocked(i);
+    return `<li><button class="card ${open?'':'locked'}" data-go="level" data-v="${i}" ${open?'':'disabled'}><span class="label">Work order ${String(i+1).padStart(2,'0')} · ${L.dev}</span><h3>${L.title}</h3>
+      <span class="foot">${b?`<span class="stars">${starStr(b.stars)}</span><span>${b.score}</span>`:open?'<span>Ready to fix</span><span>→</span>':'<span>Locked</span><span>🔒</span>'}</span></button></li>`; }).join('')}
+    <li><button class="card shop ${cert?'':'locked'}" data-go="shop" ${cert?'':'disabled'}><span class="label">${cert?'Now open':'Certificate required'}</span><h3>I-Fix-It Shop</h3><span>Customers walk in with mystery problems. Ask questions, find the fix, earn money.</span>
+      <span class="foot"><span>${cert?'Best day $'+(SAVE.shopBest||0):'Locked'}</span><span>${cert?'→':'🔒'}</span></span></button></li></ol>
+  <div class="row">${cert?`<button class="btn ghost" data-go="cert">My certificate</button>`:''}<button class="btn ghost" data-go="wipe">${G.wipe?'Tap again to erase all progress':'Reset progress'}</button></div>`;
+  G.msg='';
+}
+
+function startLevel(i){
+  if(!SAVE.name.trim()){ G.msg='Type your technician name first. It goes on your certificate.'; home(); const n=document.getElementById('nm'); if(n) n.focus(); return; }
+  if(!unlocked(i)) return;
+  G.run++; G.li=i; G.st=LEVELS[i].init(); G.mist=0; G.hints=0; G.log=[]; G.t0=Date.now(); G.locked=false; G.screen='play'; paintPlay();
+}
+function pushLog(r){ G.log.unshift(r); if(G.log.length>30) G.log.pop(); }
+const LBL={good:'Progress',bad:'Mistake',info:'Note',clue:'Clue found',hint:'Hint'};
+function paintPlay(shake){
+  if(G.screen!=='play') return;
+  const L=LEVELS[G.li], ae=document.activeElement, fin=(ae&&ae.dataset&&ae.dataset.in)||G.st._focus; G.st._focus=null;
+  app.innerHTML = `<div class="hud"><h2>${String(G.li+1).padStart(2,'0')} · ${L.title}</h2>
+    <div class="stat"><b id="clock">${fmtT((Date.now()-G.t0)/1000)}</b><span>Time</span></div>
+    <div class="stat"><b>${G.mist}</b><span>Mistakes</span></div>
+    <button class="btn ghost" data-go="home">Quit</button></div>
+  <div class="play"><section class="stage ${shake?'shake':''}" id="stage">${L.view(G.st)}</section>
+    <aside class="ticket"><span class="label">Work order ${String(G.li+1).padStart(2,'0')} · ${L.dev}</span><h3>The problem</h3><p class="prob">${L.prob}</p>
+      <div class="row"><button class="tbtn" data-go="hint" ${G.hints>=L.hints.length?'disabled':''}>Hint (−100 points)</button><span class="mono" style="font-size:13px">${G.hints}/${L.hints.length} used</span></div>
+      <span class="label">Tech log</span><ul class="log" aria-live="polite">${G.log.length?G.log.slice(0,6).map(r=>`<li class="${r.k}"><b>${LBL[r.k]}</b>${esc(r.m)}</li>`).join(''):'<li>Click parts of the device to investigate. Wrong moves cost points.</li>'}</ul></aside></div>`;
+  if(fin){ const el=document.querySelector(`[data-in="${fin}"]`); if(el){ el.focus(); try{ el.setSelectionRange(el.value.length,el.value.length); }catch(e){} } }
+}
+function doAct(a,v){
+  if(G.locked||G.screen!=='play') return;
+  const r = LEVELS[G.li].act(G.st,a,v) || null;
+  let shake=false;
+  if(r){ pushLog(r); if(r.k==='bad'){ G.mist++; shake=true; sfx('bad'); } else sfx(r.k==='info'?'tap':r.k); } else sfx('tap');
+  paintPlay(shake);
+  if(G.st.done){ G.locked=true; const t=(Date.now()-G.t0)/1000, run=G.run; sfx('win'); setTimeout(()=>{ if(run===G.run) finish(t); },1500); }
+}
+function finish(t){
+  const L=LEVELS[G.li];
+  const acc=Math.max(0,1000-200*G.mist-100*G.hints);
+  const spd=Math.round(clamp(500*(L.par*2-t)/(L.par*1.5),0,500));
+  const score=acc+spd, stars= score>=1200&&G.mist===0?3: score>=800?2:1;
+  const prev=SAVE.best[G.li], isBest=!prev||score>prev.score, wasCert=certified();
+  if(isBest){ SAVE.best[G.li]={score,stars,time:Math.round(t)}; }
+  if(!SAVE.certDate && certified()) SAVE.certDate=new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
+  persist();
+  G.res={acc,spd,score,stars,t,isBest,prev:prev?prev.score:0,newCert:!wasCert&&certified()}; G.screen='result'; G.run++;
+  const nextI=G.li+1;
+  app.innerHTML=`<div class="panel"><span class="stamp">Fixed</span><span class="label">Work order ${String(G.li+1).padStart(2,'0')} closed</span><h2>${L.title}</h2>
+    <div class="stars" style="font-size:30px">${starStr(stars)}</div>
+    <div class="lines"><div><span>Accuracy (${G.mist} mistake${G.mist===1?'':'s'}, ${G.hints} hint${G.hints===1?'':'s'})</span><span>${acc}</span></div><div><span>Speed bonus (${fmtT(t)})</span><span>+${spd}</span></div><div class="tot"><span>Score</span><span>${score}</span></div>
+      ${prev?`<div><span>${isBest?'New best! Old best':'Your best stays'}</span><span>${prev.score}</span></div>`:''}</div>
+    <div class="tip"><span class="label">What a pro remembers</span><br>${L.tip}</div>
+    <div class="row">${G.res.newCert||(certified()&&nextI>=N)?`<button class="btn red" data-go="cert">Get your certificate</button>`:nextI<N?`<button class="btn" data-go="level" data-v="${nextI}">Next work order →</button>`:''}
+      <button class="btn ghost" data-go="level" data-v="${G.li}">Try again for a better score</button><button class="btn ghost" data-go="home">Bench map</button></div></div>`;
+}
+function cert(){
+  if(!certified()){ G.screen='home'; home(); return; }
+  G.screen='cert';
+  const tot=total(), time=SAVE.best.reduce((a,b)=>a+b.time,0), rank= tot>=10500?'Master Technician': tot>=8500?'Senior Technician':'Certified Technician';
+  let h=0; for(const c of SAVE.name+tot) h=(h*31+c.charCodeAt(0))%1000000;
+  app.innerHTML=`<div class="cert"><span class="label">I-Fix-It Academy · Certificate of Completion</span><h2>Certified Troubleshooter</h2>
+    <span>This certifies that</span><div class="who">${esc(SAVE.name)}</div>
+    <span>fixed all ${N} work orders and earned the rank of</span><div class="rank">${rank}</div>
+    <div class="row" style="justify-content:center;gap:28px"><div class="stat"><b>${tot.toLocaleString()}</b><span style="color:inherit">Total score of ${(N*1500).toLocaleString()}</span></div><div class="stat"><b>${fmtT(time)}</b><span style="color:inherit">Total repair time</span></div></div>
+    <div class="cgrid">${LEVELS.map((L,i)=>`<div><span>${L.title}</span><span class="stars">${starStr(SAVE.best[i].stars)}</span></div>`).join('')}</div>
+    <div class="sigs"><div>${esc(SAVE.certDate||'')} · Date</div><div>Instructor</div><div class="mono">ID IFX-${String(h).padStart(6,'0')}</div></div></div>
+  <p style="text-align:center;color:var(--dim)">Take a screenshot of your certificate to save or print it. Replay any work order to raise your score and rank.</p>
+  <div class="row" style="justify-content:center"><button class="btn red" data-go="shop">Open the I-Fix-It Shop</button><button class="btn ghost" data-go="home">Bench map</button></div>`;
+}
+
+/* ---------- shop ---------- */
+let shopIv=null, bag=[];
+function shopStart(){ if(!certified()) return; G.run++; G.screen='shop'; w3Stop(); SH={money:0,earned:0,rating:3,served:0,streak:0,up:{tools:0,chairs:0,sign:0},cur:null,closed:false,ui:null,mode:w3Ok()?'3d':'2d'}; bag=[];
+  if(SH.mode==='3d'){ app.innerHTML=`<div id="sh-head"></div><div class="play"><div id="sh-view" class="w3"><div class="w3obj" id="sh-obj"></div><div class="w3dot"></div><button class="btn w3prompt" id="sh-prompt" hidden></button>
+    <div class="w3pad"><button data-mv="f" style="grid-column:2" aria-label="Walk forward">▲</button><button data-mv="l" style="grid-column:1;grid-row:2" aria-label="Turn left">◀</button><button data-mv="b" style="grid-column:2;grid-row:2" aria-label="Walk back">▼</button><button data-mv="r" style="grid-column:3;grid-row:2" aria-label="Turn right">▶</button></div></div><aside id="sh-side" class="w3side"></aside></div>`;
+    try{ w3Start(); }catch(e){ w3Stop(); SH.mode='2d'; } }
+  nextCust(); }
+function nextCust(){
+  if(!bag.length) bag=shuffle(CASES.map((_,i)=>i));
+  const c=CASES[bag.pop()], max=SH.mode==='3d'?Math.max(60,90-2*SH.served)+SH.up.chairs*15:Math.max(26,46-SH.served)+SH.up.chairs*10; SH.ui=null;
+  SH.cur={c,name:NAMES[Math.floor(Math.random()*NAMES.length)],face:FACES[Math.floor(Math.random()*FACES.length)],asked:[],opts:shuffle([0,1,2,3]),tried:[],max,p:max,out:null,note:'',fresh:true,color:SHIRTS[Math.floor(Math.random()*SHIRTS.length)]}; SH.tab='talk';
+  clearInterval(shopIv);
+  shopIv=setInterval(()=>{ if(G.screen!=='shop'||!SH.cur||SH.cur.out){ clearInterval(shopIv); return; } if(SH.mode==='3d'&&!SH.cur.arrived) return; SH.cur.p-=.25; const b=document.getElementById('pat'); if(b){ b.style.width=clamp(SH.cur.p/SH.cur.max*100,0,100)+'%'; b.style.background=SH.cur.p<SH.cur.max*.3?'var(--stamp)':'var(--ok)'; } if(SH.cur.p<=0) leave('I have waited long enough. I am taking this somewhere else.'); },250);
+  shopPaint();
+}
+function rate(d){ SH.rating=clamp(SH.rating+d,0,5); if(SH.rating<=0) SH.closed=true; }
+function leave(text){ const cu=SH.cur; cu.out={ok:false,text}; SH.streak=0; rate(-.5); sfx('bad'); endCust(); }
+function endCust(){ clearInterval(shopIv); SH.served++; if(SH.earned>(SAVE.shopBest||0)){ SAVE.shopBest=SH.earned; persist(); } shopPaint(); }
+function shopAct(a,v){
+  const cu=SH.cur;
+  if(a==='tab'){ SH.tab=v; if(v==='look'&&!cu.out&&!cu.looked){ cu.looked=true; cu.p-=3; sfx('clue'); } else sfx('tap'); shopPaint(); return; }
+  v=+v;
+  if(a==='pickfix'){ if(cu.out||cu.dev!=='bench'||cu.tried.includes(v)) return; cu.fixSel=v; cu.dev='hand'; SH.ui=null; cu.note='Fix applied. Carry it back to the customer at the counter.'; sfx('good'); shopPaint(); return; }
+  if(a==='ask'){ if(cu.out||cu.asked.includes(v)) return; cu.asked.push(v); cu.p-=3; sfx('clue'); shopPaint(); }
+  else if(a==='fix'){ if(cu.out||cu.tried.includes(v)) return;
+    if(v===0){ const first=!cu.tried.length; const pay=Math.round((20+20*clamp(cu.p/cu.max,0,1))*(1+.25*SH.up.tools)*(first?1:.5)); const tip=first?5+5*SH.up.sign:0;
+      SH.money+=pay+tip; SH.earned+=pay+tip; SH.streak=first?SH.streak+1:0; if(first) rate(.25);
+      cu.out={ok:true,pay,tip,text:first?'It works! You are a lifesaver.':'Okay, that did it. Took a couple of tries though.'}; sfx('win'); endCust(); }
+    else { cu.tried.push(v); cu.p-=5; rate(-.5); SH.streak=0;
+      if(cu.tried.length>=2||SH.closed) leave('Two wrong fixes? I am going to another shop.');
+      else { cu.note='That did not fix it. One more wrong answer and the customer walks out.'; sfx('bad'); shopPaint(); } } }
+  else if(a==='next'){ if(SH.closed){ if(SH.mode==='3d'){ w3Stop(); SH.mode='2d'; } shopPaint(); } else nextCust(); }
+  else if(a==='buy'){ const u=UPS[v], lv=SH.up[u.id]; if(lv<3&&SH.money>=UPCOST[lv]){ SH.money-=UPCOST[lv]; SH.up[u.id]++; sfx('good'); shopPaint(); } }
+}
+function shopPaint(){
+  if(SH.mode==='3d'){ w3Paint(); return; }
+  const cu=SH.cur, c=cu.c, full=Math.floor(SH.rating), half=SH.rating-full>=.5;
+  const head=`<div class="hud"><h2>I-Fix-It Shop</h2>
+    <div class="stat"><b>$${SH.money}</b><span>Cash</span></div><div class="stat"><b style="color:var(--warn)">${'★'.repeat(full)}${half?'½':''}${'☆'.repeat(5-full-(half?1:0))}</b><span>Shop rating</span></div>
+    <div class="stat"><b>${SH.served}</b><span>Customers</span></div><div class="stat"><b>${SH.streak}</b><span>Streak</span></div><button class="btn ghost" data-go="home">Close shop</button></div>`;
+  if(SH.closed && cu.out && cu.shown){
+    app.innerHTML=head+`<div class="panel"><span class="label">Rating hit zero</span><h2>Shop closed for today</h2><div class="lines"><div><span>Customers</span><span>${SH.served}</span></div><div class="tot"><span>Earned today</span><span>$${SH.earned}</span></div><div><span>Your best day</span><span>$${SAVE.shopBest||0}</span></div></div>
+      <div class="tip">Wrong fixes and slow service lower your rating. Ask a question or two before you choose a fix.</div><div class="row"><button class="btn" data-go="shop">Open a new day</button><button class="btn ghost" data-go="home">Bench map</button></div></div>`; return; }
+  const dk=/Phone/.test(c.dev)?'ph':/Tablet/.test(c.dev)?'tb':/Laptop/.test(c.dev)?'lp':'bx', tab=SH.tab;
+  const anim = cu.out ? (cu.gone?'gone':'exit') : cu.fresh?'enter':''; cu.fresh=false; if(cu.out) cu.gone=true;
+  const face = cu.out ? (cu.out.ok?'😊':'😠') : cu.face;
+  const scene=`<div class="fp">
+    <div class="fwall"></div><div class="ffloor"></div><div class="fdoor"><span>OPEN</span></div><div class="fwin"></div>
+    <div class="fneon l${SH.up.sign}">I-FIX-IT</div><div class="fshelf"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="fchairs">${'<i></i>'.repeat(SH.up.chairs)}</div>
+    <button class="fcust ${anim}" data-shop="tab" data-v="talk" aria-label="Talk to the customer">${cu.out?'':`<span class="fpat" title="Customer patience"><i id="pat" style="width:${clamp(cu.p/cu.max*100,0,100)}%"></i></span>`}<span class="fhead" aria-hidden="true">${face}</span><span class="fbody" style="background:${cu.color}"></span></button>
+    <div class="fcounter">
+      <button class="fitem ${tab==='look'?'on':''}" data-shop="tab" data-v="look"><span class="mini ${dk}"><i></i></span><b>${esc(c.dev)}</b></button>
+      <button class="fitem ${tab==='fix'?'on':''}" data-shop="tab" data-v="fix"><span class="mini kit l${SH.up.tools}"><i></i></span><b>Toolbox</b></button>
+      <button class="fitem ${tab==='up'?'on':''}" data-shop="tab" data-v="up"><span class="mini reg"><i>$${SH.money}</i></span><b>Register</b></button>
+    </div><div class="fhand l"></div><div class="fhand r"></div></div>`;
+  const ups=`<span class="label">Shop upgrades</span>${UPS.map((u,i)=>{ const lv=SH.up[u.id]; return `<div class="up"><span>${u.name} <span class="mono">${lv}/3</span><small>${u.d}</small></span><button class="btn" data-shop="buy" data-v="${i}" ${lv>=3||SH.money<UPCOST[lv]?'disabled':''}>${lv>=3?'Max':'$'+UPCOST[lv]}</button></div>`; }).join('')}<span class="mono" style="font-size:13px">Earned today $${SH.earned} · Best day $${SAVE.shopBest||0}</span>`;
+  let panel;
+  if(cu.out){ cu.shown=true;
+    panel=`<div class="outcome"><span class="label">${cu.out.ok?'Job done':'Customer left'}</span><b>${esc(cu.name)}: “${esc(cu.out.text)}”</b>
+      ${cu.out.ok?`<span class="mono">Paid $${cu.out.pay}${cu.out.tip?' + $'+cu.out.tip+' tip for a first-try fix':''}</span>`:''}
+      <span><b>The right fix:</b> ${esc(c.fix[0])}. ${esc(c.why)}</span><div><button class="btn" data-shop="next">${SH.closed?'See today’s results':'Next customer →'}</button></div></div>
+      ${SH.closed?'':`<div class="fpanel">${ups}</div>`}`;
+  } else {
+    const T=[['talk','Talk to customer'],['look','Inspect the '+c.dev.toLowerCase()],['fix','Open toolbox'],['up','Register']];
+    let body;
+    if(tab==='talk') body=`<span class="label" style="color:var(--dim)">Ask a question. Each one uses a little patience.</span><div class="opts">${c.q.map((q,i)=>`<button class="opt" data-shop="ask" data-v="${i}" ${cu.asked.includes(i)?'disabled':''}>${esc(q[0])}</button>`).join('')}</div>`;
+    else if(tab==='look') body=`<span class="label" style="color:var(--dim)">You lean over the counter and look closely</span><p>${esc(c.look)}</p>`;
+    else if(tab==='fix') body=`<span class="label" style="color:var(--dim)">Choose your fix. A wrong one drops your rating.</span><div class="opts">${cu.opts.map(i=>`<button class="opt fix" data-shop="fix" data-v="${i}" ${cu.tried.includes(i)?'disabled':''}>${esc(c.fix[i])}</button>`).join('')}</div>`;
+    else body=ups+`<span style="font-size:14px;color:var(--dim)">Faster fixes pay more. A first-try fix earns a tip and raises your rating. The customer is still waiting while you shop.</span>`;
+    panel=`${cu.note?`<p class="note">${esc(cu.note)}</p>`:''}<div class="ftabs">${T.map(t=>`<button class="ftab ${tab===t[0]?'on':''}" data-shop="tab" data-v="${t[0]}">${esc(t[1])}</button>`).join('')}</div><div class="fpanel">${body}</div>`;
+  }
+  app.innerHTML=head+`<div class="shopfp">${scene}
+    <div class="dlg"><span class="label">${esc(cu.name)} · ${esc(c.dev)}</span><b>“${esc(c.say)}”</b>
+      ${cu.asked.map(i=>`<div class="qa"><i>You: ${esc(c.q[i][0])}</i><br>“${esc(c.q[i][1])}”</div>`).join('')}${cu.looked?`<div class="qa"><i>You inspected it:</i><br>${esc(c.look)}</div>`:''}</div>
+    ${panel}</div>`;
+}
+
+/* ---------- walk-around shop (3D) ---------- */
+let W3=null;
+function w3Ok(){ try{ if(!window.THREE) return false; const c=document.createElement('canvas'); return !!(c.getContext('webgl')||c.getContext('experimental-webgl')); }catch(e){ return false; } }
+function w3Stop(){ if(W3){ W3.dead=true; try{ W3.r.dispose(); }catch(e){} W3=null; } }
+function shopHead(){ const full=Math.floor(SH.rating), half=SH.rating-full>=.5;
+  return `<div class="hud"><h2>I-Fix-It Shop</h2><div class="stat"><b>$${SH.money}</b><span>Cash</span></div><div class="stat"><b style="color:var(--warn)">${'★'.repeat(full)}${half?'½':''}${'☆'.repeat(5-full-(half?1:0))}</b><span>Shop rating</span></div>
+    <div class="stat"><b>${SH.served}</b><span>Customers</span></div><div class="stat"><b>${SH.streak}</b><span>Streak</span></div><button class="btn ghost" data-go="home">Close shop</button></div>`; }
+function w3Objective(){ const cu=SH.cur, dn=cu.c.dev.toLowerCase();
+  if(cu.out) return SH.closed?'Your rating hit zero. Read the result on the side.':'Job finished. Read the result, then call the next customer.';
+  if(!cu.arrived) return 'A customer is walking in. Meet them at the counter.';
+  if(cu.dev==='counter') return cu.asked.length?'Pick up the '+dn+' from the counter and carry it to the workbench.':'Walk up to '+cu.name+' and talk. The '+dn+' is on the counter.';
+  if(cu.dev==='bench') return 'Work on the '+dn+' at the workbench and choose a fix.';
+  return cu.fixSel!=null?'Carry the '+dn+' back to '+cu.name+' at the counter.':'Carry the '+dn+' to the workbench at the back of the shop.'; }
+function w3Paint(){
+  if(!W3) return; const cu=SH.cur, c=cu.c, H=document.getElementById('sh-head'), S=document.getElementById('sh-side'), O=document.getElementById('sh-obj'); if(!H||!S) return;
+  H.innerHTML=shopHead(); O.textContent=w3Objective();
+  const ups=`<span class="label">Upgrade computer</span>${UPS.map((u,i)=>{ const lv=SH.up[u.id]; return `<div class="up"><span>${u.name} <span class="mono">${lv}/3</span><small>${u.d}</small></span><button class="btn" data-shop="buy" data-v="${i}" ${lv>=3||SH.money<UPCOST[lv]?'disabled':''}>${lv>=3?'Max':'$'+UPCOST[lv]}</button></div>`; }).join('')}`;
+  let h='';
+  if(cu.arrived) h+=`<div class="dlg"><span class="label">${esc(cu.name)} · ${esc(c.dev)}</span><b>“${esc(c.say)}”</b>${cu.asked.map(i=>`<div class="qa"><i>You: ${esc(c.q[i][0])}</i><br>“${esc(c.q[i][1])}”</div>`).join('')}${cu.looked?`<div class="qa"><i>At the workbench you saw:</i><br>${esc(c.look)}</div>`:''}</div>`;
+  if(cu.out){ cu.shown=true;
+    h+=`<div class="outcome"><span class="label">${cu.out.ok?'Job done':'Customer left'}</span><b>${esc(cu.name)}: “${esc(cu.out.text)}”</b>${cu.out.ok?`<span class="mono">Paid $${cu.out.pay}${cu.out.tip?' + $'+cu.out.tip+' tip for a first-try fix':''}</span>`:''}
+      <span><b>The right fix:</b> ${esc(c.fix[0])}. ${esc(c.why)}</span><div><button class="btn" data-shop="next">${SH.closed?'See today’s results':'Call the next customer →'}</button></div></div>`;
+    if(SH.ui==='up') h+=`<div class="fpanel">${ups}</div>`;
+  } else {
+    if(cu.arrived) h+=`<div><span class="label" style="color:var(--dim)">Customer patience</span><div class="pat"><i id="pat" style="width:${clamp(cu.p/cu.max*100,0,100)}%"></i></div></div>`;
+    if(cu.note) h+=`<p class="note">${esc(cu.note)}</p>`;
+    if(SH.ui==='talk') h+=`<div class="fpanel"><span class="label" style="color:var(--dim)">Ask a question. Each one uses a little patience.</span><div class="opts">${c.q.map((q,i)=>`<button class="opt" data-shop="ask" data-v="${i}" ${cu.asked.includes(i)?'disabled':''}>${esc(q[0])}</button>`).join('')}</div></div>`;
+    else if(SH.ui==='bench'&&cu.dev==='bench') h+=`<div class="fpanel"><span class="label" style="color:var(--dim)">Choose your fix. A wrong one drops your rating.</span><div class="opts">${cu.opts.map(i=>`<button class="opt fix" data-shop="pickfix" data-v="${i}" ${cu.tried.includes(i)?'disabled':''}>${esc(c.fix[i])}</button>`).join('')}</div></div>`;
+    else if(SH.ui==='up') h+=`<div class="fpanel">${ups}</div>`;
+  }
+  h+=`<div class="fpanel" style="font-size:14px;color:var(--dim)"><span class="label">Controls</span><span><b style="color:var(--text)">Walk:</b> W and S, or ▲ ▼. <b style="color:var(--text)">Turn:</b> A and D, or ◀ ▶. You can also drag the view to look around.</span><span><b style="color:var(--text)">Use things:</b> walk close, face them, then press E or the yellow button.</span><span>Faster first-try fixes pay more. Buy upgrades at the computer in the back corner.</span></div>`;
+  S.innerHTML=h; W3.sync();
+}
+function w3Interact(){
+  if(!W3||!W3.target||G.screen!=='shop') return; const id=W3.target, cu=SH.cur;
+  if(id==='talk'){ SH.ui='talk'; sfx('tap'); }
+  else if(id==='pick'){ cu.dev='hand'; SH.ui=null; sfx('tap'); }
+  else if(id==='put'){ cu.dev='counter'; sfx('tap'); }
+  else if(id==='bench'){ cu.dev='bench'; cu.fixSel=null; cu.note=''; SH.ui='bench'; sfx(cu.looked?'tap':'clue'); cu.looked=true; }
+  else if(id==='work'){ SH.ui='bench'; sfx('tap'); }
+  else if(id==='up'){ SH.ui='up'; sfx('tap'); }
+  else if(id==='give'){ const v=cu.fixSel; cu.note=''; shopAct('fix',String(v)); if(!cu.out){ cu.fixSel=null; cu.note='“It still does not work!” Take it back to the workbench and try a different fix. One more wrong fix and they leave.'; } }
+  shopPaint();
+}
+function w3Start(){
+  const T=THREE, wrap=document.getElementById('sh-view'), prompt=document.getElementById('sh-prompt');
+  const r=new T.WebGLRenderer({antialias:true}); r.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5)); wrap.insertBefore(r.domElement,wrap.firstChild);
+  const sc=new T.Scene(); sc.background=new T.Color(0x06191a);
+  const cam=new T.PerspectiveCamera(70,1.6,.1,60); cam.rotation.order='YXZ'; sc.add(cam);
+  sc.add(new T.HemisphereLight(0xffffff,0x6b5a45,.95)); const dl=new T.DirectionalLight(0xffffff,.45); dl.position.set(3,6,2); sc.add(dl);
+  const mat=c=>new T.MeshLambertMaterial({color:c});
+  const box=(w,h,d,c,x,y,z,par)=>{ const m=new T.Mesh(new T.BoxGeometry(w,h,d),mat(c)); m.position.set(x,y,z); (par||sc).add(m); return m; };
+  const labels=[];
+  const label=(txt,col,w,h,x,y,z,frame)=>{ const cv=document.createElement('canvas'); cv.width=512; cv.height=Math.round(512*h/w); const tx=new T.CanvasTexture(cv);
+    const m=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({map:tx,transparent:true})); m.position.set(x,y,z); sc.add(m);
+    m.userData={txt,col,draw(){ const g=cv.getContext('2d'), u=m.userData; g.clearRect(0,0,cv.width,cv.height); g.font='400 '+Math.round(cv.height*.56)+'px Bungee, "Arial Black", Impact, sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillStyle=u.col; if(frame){ g.strokeStyle=u.col; g.lineWidth=8; g.strokeRect(8,8,cv.width-16,cv.height-16); } g.fillText(u.txt,cv.width/2,cv.height/2+4,cv.width-48); tx.needsUpdate=true; }};
+    m.userData.draw(); labels.push(m); return m; };
+  // room
+  const fc=document.createElement('canvas'); fc.width=fc.height=64; { const g=fc.getContext('2d'); g.fillStyle='#d9c9a6'; g.fillRect(0,0,64,64); g.fillStyle='#b79f72'; g.fillRect(0,0,32,32); g.fillRect(32,32,32,32); }
+  const ft=new T.CanvasTexture(fc); ft.wrapS=ft.wrapT=T.RepeatWrapping; ft.repeat.set(7,6); ft.magFilter=T.NearestFilter;
+  const floor=new T.Mesh(new T.PlaneGeometry(14,12),new T.MeshLambertMaterial({map:ft})); floor.rotation.x=-Math.PI/2; sc.add(floor);
+  const ceil=new T.Mesh(new T.PlaneGeometry(14,12),mat(0x123f41)); ceil.rotation.x=Math.PI/2; ceil.position.y=4; sc.add(ceil);
+  const WALL=0x1d5c5e;
+  box(14,4,.2,WALL,0,2,-6.1); box(.2,4,12.4,WALL,-7.1,2,0); box(.2,4,12.4,WALL,7.1,2,0);
+  box(3.2,4,.2,WALL,-5.4,2,6.1); box(9.2,4,.2,WALL,2.4,2,6.1); box(1.6,1.4,.2,WALL,-3,3.3,6.1);
+  const out=new T.Mesh(new T.PlaneGeometry(4,5),new T.MeshBasicMaterial({color:0xffb36b,side:T.DoubleSide})); out.position.set(-3,2,7.2); sc.add(out);
+  box(.12,2.6,.3,0x4c2c16,-3.85,1.3,6.05); box(.12,2.6,.3,0x4c2c16,-2.15,1.3,6.05); box(1.8,.12,.3,0x4c2c16,-3,2.63,6.05);
+  const win=new T.Mesh(new T.PlaneGeometry(3,1.6),new T.MeshBasicMaterial({color:0xff9a5a,side:T.DoubleSide})); win.position.set(3,2.2,5.98); sc.add(win);
+  box(3.2,.1,.1,0xe9e2cf,3,3.02,5.96); box(3.2,.1,.1,0xe9e2cf,3,1.38,5.96); box(.1,1.7,.1,0xe9e2cf,3,2.2,5.96); box(.1,1.7,.1,0xe9e2cf,1.42,2.2,5.96); box(.1,1.7,.1,0xe9e2cf,4.58,2.2,5.96);
+  // counter + register
+  box(6,1,.9,0x8a5a33,2,.5,1.5); box(6.2,.08,1.1,0xc18a54,2,1.04,1.5);
+  box(.7,.45,.5,0x2a2f36,4.3,1.3,1.5); box(.5,.18,.04,0x58f0a6,4.3,1.36,1.24);
+  // workbench
+  box(4,.95,1,0x6b7780,-3,.475,-5.3); box(4.2,.06,1.1,0x8b979d,-3,.98,-5.3); box(3.6,1.1,.06,0xc9a877,-3,1.95,-5.96);
+  [[-4.3,0xe4472b,.5],[-3.6,0x2f5fe0,.7],[-2.9,0xffb224,.4],[-2.2,0x35d08f,.6],[-1.6,0xe4472b,.3]].forEach(t=>box(.14,t[2],.05,t[1],t[0],1.95,-5.9));
+  const kit=box(.7,.35,.4,0xe4472b,-4.4,1.19,-5.4);
+  // upgrade computer + shelves
+  box(.9,1.1,.7,0x2a2f36,5.6,.55,-4.6); const scr=box(.8,.55,.06,0x2f8fe0,5.6,1.45,-4.75); scr.material=new T.MeshBasicMaterial({color:0x4fb0ff});
+  box(.6,2.2,5,0x4c2c16,6.6,1.1,.5); [0,1,2,3,4,5,6,7].forEach(i=>box(.4,.35,.4,[0xc4ccd0,0xffe27a,0xe4472b,0x35d08f][i%4],6.45,i%2?1.5:.85,-1.5+(i>>1)*1.25));
+  const chairs=[0,1,2].map(i=>{ const g=new T.Group(); box(.55,.1,.55,0x35d08f,0,.45,0,g); box(.1,.75,.55,0x1f8a5e,-.25,.8,0,g); box(.5,.45,.5,0x1f8a5e,0,.22,0,g); g.position.set(-6.55,0,3.8-i*1.1); sc.add(g); return g; });
+  const neon=label('I-FIX-IT','#3f7d7b',4.2,1.05,1.6,3.15,-5.98,true), glow=new T.PointLight(0xffb224,0,9); glow.position.set(1.6,3,-4.8); sc.add(glow);
+  label('WORKBENCH','#ffe9a3',2.6,.5,-3,2.95,-5.98); label('UPGRADES','#ffe9a3',2.2,.45,5.3,2.5,-5.98);
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>labels.forEach(l=>l.userData.draw()));
+  // customer
+  const cm=new T.Group(); const body=new T.Mesh(new T.CylinderGeometry(.3,.4,1.25,14),mat(0xe4472b)); body.position.y=.63; cm.add(body);
+  const head=new T.Mesh(new T.SphereGeometry(.29,16,12),mat(0xffd66b)); head.position.y=1.52; cm.add(head);
+  [-.11,.11].forEach(x=>{ const e=new T.Mesh(new T.SphereGeometry(.04,8,8),new T.MeshBasicMaterial({color:0x1a2422})); e.position.set(x,1.58,.26); cm.add(e); });
+  const mouth=box(.16,.03,.03,0x1a2422,0,1.43,.28,cm); mouth.material=new T.MeshBasicMaterial({color:0x1a2422});
+  cm.visible=false; sc.add(cm);
+  const bar=new T.Group(); const bbg=new T.Mesh(new T.PlaneGeometry(.9,.12),new T.MeshBasicMaterial({color:0x06191a})); const bfill=new T.Mesh(new T.PlaneGeometry(.84,.07),new T.MeshBasicMaterial({color:0x35d08f})); bfill.position.z=.01; bar.add(bbg); bar.add(bfill); bar.visible=false; sc.add(bar);
+  // device
+  const dev=new T.Group(); dev.visible=false; sc.add(dev);
+  const buildDev=d=>{ while(dev.children.length) dev.remove(dev.children[0]);
+    if(/Laptop/.test(d)){ box(.6,.04,.42,0xc4ccd0,0,.02,0,dev); const s2=box(.6,.4,.03,0x16191d,0,.22,-.22,dev); s2.rotation.x=-.25; const g=box(.52,.32,.01,0x9fd0ff,0,.22,-.2,dev); g.rotation.x=-.25; g.material=new T.MeshBasicMaterial({color:0x9fd0ff}); }
+    else if(/Phone/.test(d)){ box(.2,.03,.38,0x16191d,0,.015,0,dev); const g=box(.17,.01,.33,0x9fd0ff,0,.035,0,dev); g.material=new T.MeshBasicMaterial({color:0x9fd0ff}); }
+    else if(/Tablet/.test(d)){ box(.42,.03,.56,0x16191d,0,.015,0,dev); const g=box(.37,.01,.5,0x9fd0ff,0,.035,0,dev); g.material=new T.MeshBasicMaterial({color:0x9fd0ff}); }
+    else { box(.5,.3,.4,0xe9edf0,0,.15,0,dev); box(.2,.08,.02,0x0d2b1c,-.1,.2,.21,dev); box(.3,.02,.3,0xffffff,0,.31,0,dev); } };
+  const COL=[[-1,5,1.05,1.95],[-5,-1,-5.9,-4.8],[5.15,6.05,-4.95,-4.25],[6.3,7,-2,3]];
+  const blocked=(x,z)=>{ if(x<-6.6||x>6.6||z<-5.6||z>5.5) return true; for(const b of COL) if(x>b[0]-.35&&x<b[1]+.35&&z>b[2]-.35&&z<b[3]+.35) return true; return false; };
+  const me=W3={r,dead:false,x:2,z:-1,yaw:Math.PI,pitch:-.05,keys:{},t:0,w:0,h:0,cu:null,devState:'',target:null,tLabel:'',
+    sync(){ const u=SH.up; chairs.forEach((c,i)=>c.visible=i<u.chairs);
+      neon.userData.col=['#3f7d7b','#ffe27a','#ff9ad1','#8dfcff'][u.sign]; neon.userData.draw(); glow.intensity=u.sign?.5+.25*u.sign:0; glow.color.set([0xffb224,0xffb224,0xff4fa3,0x29d9ff][u.sign]);
+      kit.scale.setScalar(1+.18*u.tools); kit.material.color.set([0xe4472b,0xe4472b,0x2f5fe0,0xffb224][u.tools]); } };
+  const walk=(tx,tz,dt)=>{ const dx=tx-cm.position.x, dz=tz-cm.position.z, d=Math.hypot(dx,dz), st=2.4*dt; if(d<=st){ cm.position.x=tx; cm.position.z=tz; return true; } cm.position.x+=dx/d*st; cm.position.z+=dz/d*st; cm.rotation.y=Math.atan2(dx,dz); return false; };
+  function tick(t){
+    if(W3!==me||me.dead) return; requestAnimationFrame(tick);
+    const dt=Math.min(.05,((t-me.t)||0)/1000); me.t=t;
+    const w=wrap.clientWidth,h=wrap.clientHeight; if(w&&h&&(w!==me.w||h!==me.h)){ me.w=w; me.h=h; r.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); }
+    const k=me.keys; me.yaw+=((k.l?1:0)-(k.r?1:0))*2.3*dt;
+    const mv=((k.f?1:0)-(k.b?1:0))*4*dt; if(mv){ const dx=-Math.sin(me.yaw)*mv, dz=-Math.cos(me.yaw)*mv; if(!blocked(me.x+dx,me.z)) me.x+=dx; if(!blocked(me.x,me.z+dz)) me.z+=dz; }
+    cam.position.set(me.x,1.6,me.z); cam.rotation.set(me.pitch,me.yaw,0);
+    const cu=SH&&SH.cur; let repaint=false;
+    if(cu){
+      if(cu!==me.cu){ me.cu=cu; cm.position.set(-3,0,5.7); cm.visible=true; body.material.color.set(cu.color); head.material.color.set(0xffd66b); mouth.scale.set(1,1,1); buildDev(cu.c.dev); cu.walk='in'; }
+      if(cu.walk==='in'&&walk(3,2.6,dt)){ cu.walk=null; cu.arrived=true; cu.dev='counter'; tone(1320,.5,'sine',.08); repaint=true; }
+      if(cu.arrived&&!cu.out) cm.rotation.y=Math.atan2(me.x-cm.position.x,me.z-cm.position.z);
+      if(cu.out&&!cu.left){ cu.dev='gone'; head.material.color.set(cu.out.ok?0xffd66b:0xff7a5c); mouth.scale.set(cu.out.ok?1.6:.6,1,1); if(walk(-3,5.7,dt)){ cu.left=true; cm.visible=false; } }
+      bar.visible=!!cu.arrived&&!cu.out; if(bar.visible){ const f=clamp(cu.p/cu.max,0,1); bfill.scale.x=Math.max(f,.001); bfill.position.x=-(1-f)*.42; bfill.material.color.set(f<.3?0xe4472b:0x35d08f); bar.position.set(cm.position.x,2.1,cm.position.z); bar.rotation.y=me.yaw; }
+      const ds=cu.dev||''; if(ds!==me.devState){ me.devState=ds; dev.visible=ds==='counter'||ds==='hand'||ds==='bench';
+        if(ds==='hand'){ cam.add(dev); dev.position.set(.42,-.42,-.95); dev.rotation.set(.15,.35,0); } else { sc.add(dev); dev.rotation.set(0,ds==='bench'?0:Math.PI,0); if(ds==='counter') dev.position.set(.4,1.08,1.5); else dev.position.set(-3,1.01,-5.2); } }
+    }
+    // what can be used right now
+    const cands=[]; if(cu&&cu.arrived&&!cu.out){ const dn=cu.c.dev.toLowerCase();
+      if(cu.dev==='hand'&&cu.fixSel!=null) cands.push(['give','Hand the '+dn+' back to '+cu.name,3,2.6,3.3]); else cands.push(['talk','Talk to '+cu.name,3,2.6,3.3]);
+      if(cu.dev==='counter') cands.push(['pick','Pick up the '+dn,.4,1.5,2.1]);
+      if(cu.dev==='hand'){ cands.push(['bench','Put the '+dn+' on the workbench',-3,-5.3,2.6]); if(cu.fixSel==null) cands.push(['put','Put the '+dn+' back on the counter',.4,1.5,2.1]); }
+      if(cu.dev==='bench') cands.push(['work','Work on the '+dn,-3,-5.3,2.6]); }
+    cands.push(['up','Use the upgrade computer',5.6,-4.6,2.6]);
+    let best=null,bd=.35; const fx=-Math.sin(me.yaw), fz=-Math.cos(me.yaw);
+    for(const c of cands){ const dx=c[2]-me.x, dz=c[3]-me.z, d=Math.hypot(dx,dz); if(d>c[4]||d<.01) continue; const dot=(dx*fx+dz*fz)/d; if(dot>bd){ bd=dot; best=c; } }
+    const lab=best?best[1]:''; me.target=best?best[0]:null; if(lab!==me.tLabel){ me.tLabel=lab; prompt.hidden=!best; prompt.textContent=best?'E · '+lab:''; }
+    const far=(x,z,d)=>Math.hypot(me.x-x,me.z-z)>d;
+    if((SH.ui==='talk'&&far(3,2.6,4.6))||(SH.ui==='bench'&&far(-3,-5.3,3.6))||(SH.ui==='up'&&far(5.6,-4.6,3.6))){ SH.ui=null; repaint=true; }
+    if(repaint) w3Paint();
+    r.render(sc,cam);
+  }
+  // input
+  const cv=r.domElement; let drag=null;
+  cv.addEventListener('pointerdown',e=>{ drag=[e.clientX,e.clientY]; try{ cv.setPointerCapture(e.pointerId); }catch(_){} });
+  cv.addEventListener('pointermove',e=>{ if(!drag) return; me.yaw-=(e.clientX-drag[0])*.006; me.pitch=clamp(me.pitch-(e.clientY-drag[1])*.004,-.6,.5); drag=[e.clientX,e.clientY]; });
+  ['pointerup','pointercancel'].forEach(n=>cv.addEventListener(n,()=>{ drag=null; }));
+  wrap.querySelectorAll('[data-mv]').forEach(b=>{ const kk=b.dataset.mv; b.addEventListener('pointerdown',e=>{ e.preventDefault(); me.keys[kk]=true; }); ['pointerup','pointerleave','pointercancel'].forEach(n=>b.addEventListener(n,()=>{ me.keys[kk]=false; })); });
+  prompt.addEventListener('click',w3Interact);
+  me.sync(); requestAnimationFrame(tick);
+}
+const KEYMAP={KeyW:'f',ArrowUp:'f',KeyS:'b',ArrowDown:'b',KeyA:'l',ArrowLeft:'l',KeyD:'r',ArrowRight:'r'};
+document.addEventListener('keydown',e=>{ if(!W3||G.screen!=='shop'||/INPUT|TEXTAREA/.test(e.target.tagName||'')) return;
+  if(KEYMAP[e.code]){ W3.keys[KEYMAP[e.code]]=true; e.preventDefault(); }
+  else if(e.code==='KeyE'||(e.code==='Space'&&e.target.tagName!=='BUTTON')){ e.preventDefault(); if(!e.repeat) w3Interact(); } });
+document.addEventListener('keyup',e=>{ if(W3&&KEYMAP[e.code]) W3.keys[KEYMAP[e.code]]=false; });
+if(typeof window.addEventListener==='function') window.addEventListener('blur',()=>{ if(W3) W3.keys={}; });
+
+/* ---------- events ---------- */
+const NAV = {
+  home(){ G.run++; G.screen='home'; clearInterval(shopIv); w3Stop(); home(); },
+  level(v){ startLevel(+v); },
+  hint(){ const L=LEVELS[G.li]; if(G.locked||G.hints>=L.hints.length) return; pushLog({k:'hint',m:L.hints[G.hints]}); G.hints++; sfx('clue'); paintPlay(); },
+  cert(){ G.run++; w3Stop(); cert(); },
+  shop(){ shopStart(); },
+  mute(){ mute=!mute; home(); },
+  wipe(){ if(G.wipe){ SAVE={name:SAVE.name,best:[],shopBest:0}; persist(); G.wipe=false; } else G.wipe=true; home(); }
+};
+document.addEventListener('click', e => {
+  const t=e.target.closest('[data-a],[data-go],[data-shop]'); if(!t||t.disabled) return;
+  if(t.dataset.go!=='wipe') G.wipe=false;
+  if(t.dataset.a) doAct(t.dataset.a,t.dataset.v);
+  else if(t.dataset.go) NAV[t.dataset.go](t.dataset.v);
+  else shopAct(t.dataset.shop,t.dataset.v);
+});
+document.addEventListener('input', e => {
+  const t=e.target;
+  if(t.id==='nm'){ SAVE.name=t.value.slice(0,28); persist(); }
+  else if(t.dataset.in==='pw' && G.screen==='play'){ let v=t.value; if(G.st.caps) v=v.toUpperCase(); G.st.val=v; t.value=v; }
+});
+document.addEventListener('keydown', e => { if(e.key==='Enter' && e.target.dataset && e.target.dataset.in==='pw'){ e.preventDefault(); doAct('sign'); } });
+setInterval(()=>{ if(G.screen==='play'&&!G.locked){ const c=document.getElementById('clock'); if(c) c.textContent=fmtT((Date.now()-G.t0)/1000); } },500);
+home();
+</script>
+
+</body></html>
